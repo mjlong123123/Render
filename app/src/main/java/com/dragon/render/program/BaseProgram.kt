@@ -3,9 +3,7 @@ package com.dragon.render.program
 import android.opengl.GLES20
 import com.dragon.render.OpenGlUtils
 
-abstract class BaseProgram : IProgram {
-    abstract val vertexShader : String
-    abstract val fragmentShader :String
+abstract class BaseProgram(val vertexShader : String, val fragmentShader :String) : IProgram {
 
     var programHandle : Int = 0
 
@@ -13,9 +11,9 @@ abstract class BaseProgram : IProgram {
     override fun init() {
         programHandle = OpenGlUtils.createProgram(vertexShader, fragmentShader)
     }
-    override fun draw() {
+    override fun draw(vpMatrix: FloatArray) {
         drawBefore()
-        drawContent()
+        drawContent(vpMatrix)
         drawAfter()
     }
 
@@ -23,7 +21,7 @@ abstract class BaseProgram : IProgram {
         GLES20.glUseProgram(programHandle)
     }
 
-    abstract fun drawContent()
+    abstract fun drawContent(vpMatrix: FloatArray)
 
     fun drawAfter() {
 

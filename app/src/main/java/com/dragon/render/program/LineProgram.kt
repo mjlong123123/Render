@@ -5,19 +5,17 @@ import java.nio.ByteBuffer
 import java.nio.ByteOrder
 import java.nio.FloatBuffer
 
-class LineProgram : BaseProgram() {
-    override val vertexShader = """
+class LineProgram : BaseProgram("""
             attribute vec2 vPosition;
             void main(){
                 gl_Position = vec4(vPosition,1.0,1.0);
             }
-        """
-    override val fragmentShader = """
+        ""","""
              void main(){
                 gl_FragColor = vec4(1.0,0.0,0.0,1.0);
             }
         """
-
+    ) {
     private val vPositionHandle: Int by lazy {
         GLES20.glGetAttribLocation(programHandle, "vPosition")
     }
@@ -35,7 +33,7 @@ class LineProgram : BaseProgram() {
         positionBuffer.put(startX).put(startY).put(endX).put(endY).position(0)
     }
 
-    override fun drawContent() {
+    override fun drawContent(vpMatrix:FloatArray) {
         GLES20.glEnableVertexAttribArray(vPositionHandle)
         GLES20.glLineWidth(6f)
         GLES20.glVertexAttribPointer(vPositionHandle, 2, GLES20.GL_FLOAT, false, 0, positionBuffer)

@@ -1,18 +1,18 @@
 package com.dragon.render
 
+import android.graphics.BitmapFactory
 import android.opengl.GLES20
 import android.opengl.GLSurfaceView
+import android.opengl.Matrix
 import android.util.Log
+import android.view.MotionEvent
 import android.view.SurfaceHolder
-import com.dragon.render.program.LineProgram
-import com.dragon.render.program.PointerProgram
-import com.dragon.render.program.SquareProgram
-import com.dragon.render.program.TriangleProgram
+import android.view.View
+import com.dragon.render.program.*
 import javax.microedition.khronos.egl.EGLConfig
 import javax.microedition.khronos.opengles.GL10
 
-class CustomRender(val glSurfaceView: GLSurfaceView) : GLSurfaceView.Renderer,
-    SurfaceHolder.Callback {
+class CustomRender(val glSurfaceView: GLSurfaceView) : GLSurfaceView.Renderer, View.OnTouchListener{
     companion object {
         const val TAG = "CustomRender"
     }
@@ -31,13 +31,33 @@ class CustomRender(val glSurfaceView: GLSurfaceView) : GLSurfaceView.Renderer,
     private val squareProgram : SquareProgram by lazy {
         SquareProgram().apply { init() }
     }
+
+    private val textureProgram: TextureProgram by lazy {
+        val resources = glSurfaceView.resources
+        val context = glSurfaceView.context
+        val bitmap = BitmapFactory.decodeStream(context.assets.open("global_lut.png"))
+        TextureProgram(bitmap).apply { init() }
+    }
+
+    val vpMatrix = FloatArray(16)
+    val projectionMatrix = FloatArray(16)
+    val viewMatrix = FloatArray(16)
+
+    var ratio = 1.0f
+
+    var pointX : Float = 0f
+    var pointY : Float = 0f
+
+    var viewPortWidth: Int = 1
+    var viewPortHeight : Int = 1
+
     init {
         glSurfaceView.apply {
             setEGLContextClientVersion(2)
             setRenderer(this@CustomRender)
             renderMode = GLSurfaceView.RENDERMODE_WHEN_DIRTY
             preserveEGLContextOnPause = true
-            holder.addCallback(this@CustomRender)
+            setOnTouchListener(this@CustomRender)
         }
     }
 
@@ -45,39 +65,52 @@ class CustomRender(val glSurfaceView: GLSurfaceView) : GLSurfaceView.Renderer,
         //clear screen.
         GLES20.glClearColor(1.0f, 1.0f, 1.0f, 1.0f)
         GLES20.glClear(GLES20.GL_COLOR_BUFFER_BIT or GLES20.GL_DEPTH_BUFFER_BIT)
-        pointerProgram.setPosition(0.5f,0.5f)
-        pointerProgram.draw()
+//        Matrix.setIdentityM(vpMatrix,0)
+//        pointerProgram.setMVPMatrix(vpMatrix)
+        pointerProgram.setPosition(pointX,viewPortHeight - pointY)
+        pointerProgram.draw(vpMatrix)
 
-        lineProgram.setLine(0f,0f,0.3f,0.5f)
-        lineProgram.draw()
+        textureProgram.setSquare(0f,0f,viewPortWidth.toFloat(),viewPortHeight.toFloat())
+        textureProgram.draw(vpMatrix)
+//        lineProgram.setLine(0f,0f,0.3f,0.5f)
+//        lineProgram.draw()
+//
+//        lineProgram.setLine(-0.5f,-0.5f,-0.3f,-0.8f)
+//        lineProgram.draw()
 
-        lineProgram.setLine(-0.5f,-0.5f,-0.3f,-0.8f)
-        lineProgram.draw()
-
-        triangleProgram.setTriangle(-0.5f,0f,0f,0.5f,-1f,1f)
-        triangleProgram.draw()
-
-        squareProgram.setSquare(-0.5f,0f,0f,-0.5f)
-        squareProgram.draw()
+//        triangleProgram.setTriangle(-1f,0f,1f,0f,0f,1f)
+//        triangleProgram.draw(vpMatrix)
+//
+//        squareProgram.setSquare(-0.5f,0f,0f,-0.5f)
+//        squareProgram.draw()
     }
 
     override fun onSurfaceChanged(gl: GL10?, width: Int, height: Int) {
         Log.d(TAG, "onSurfaceChanged width $width height $height ")
+        GLES20.glViewport(0,0,width,height)
+        viewPortWidth = width
+        viewPortHeight = height
+        ratio = width.toFloat() / height.toFloat()
+        Matrix.frustumM(projectionMatrix,0,0f,width.toFloat(),0f,height.toFloat(),3f,15f)
+        Matrix.setLookAtM(viewMatrix, 0, 0f, 0f, 3f, 0f, 0f, 0f, 0f, 1.0f, 0.0f)
+        // Calculate the projection and view transformation
+        Matrix.multiplyMM(vpMatrix, 0, projectionMatrix, 0, viewMatrix, 0)
     }
 
     override fun onSurfaceCreated(gl: GL10?, config: EGLConfig?) {
         Log.d(TAG, "onSurfaceCreated ")
     }
 
-    override fun surfaceChanged(holder: SurfaceHolder?, format: Int, width: Int, height: Int) {
-        Log.d(TAG, "surfaceChanged $holder width $width height $height ")
-    }
-
-    override fun surfaceDestroyed(holder: SurfaceHolder?) {
-        Log.d(TAG, "surfaceDestroyed  $holder")
-    }
-
-    override fun surfaceCreated(holder: SurfaceHolder?) {
-        Log.d(TAG, "surfaceCreated  $holder")
+    override fun onTouch(v: View?, event: MotionEvent?): Boolean {
+        event?.let {
+            when(it.actionMasked){
+                MotionEvent.ACTION_DOWN ->{
+                    pointX = event.x
+                    pointY = event.y
+                    (v as GLSurfaceView).requestRender()
+                }
+            }
+        }
+        return true
     }
 }
