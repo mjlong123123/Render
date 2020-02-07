@@ -2,26 +2,26 @@ package com.dragon.render.program
 
 import android.graphics.Bitmap
 import android.opengl.GLES20
+import android.opengl.GLES20.GL_TEXTURE0
 import android.opengl.GLES20.GL_TEXTURE_2D
-import android.opengl.GLUtils
-import android.opengl.Matrix
+import com.dragon.render.OpenGlUtils
+import com.dragon.render.texture.BasicTexture
 import com.dragon.render.texture.BitmapTexture
-import java.nio.ByteBuffer
-import java.nio.ByteOrder
-import java.nio.FloatBuffer
 
-class TextureProgram(bitmap: Bitmap) : BaseProgram(
-    """
+class TextureProgram {
+    private val programHandle = OpenGlUtils.createProgram(
+        """
             attribute vec2 vPosition;
             attribute vec2 vInputTextureCoordinate;
             uniform mat4 mvpMatrix;
+            uniform mat4 textureMatrix;
             varying vec2 vTextureCoordinate;
             void main(){
                 gl_Position = mvpMatrix * vec4(vPosition,0.0,1.0);
-                vTextureCoordinate = vInputTextureCoordinate;
+                vTextureCoordinate = (vec4(vInputTextureCoordinate,0.0,1.0)).xy;
             }
         """,
-    """
+        """
             precision mediump float;
             uniform sampler2D inputTexture;
             varying vec2 vTextureCoordinate;
@@ -29,58 +29,37 @@ class TextureProgram(bitmap: Bitmap) : BaseProgram(
                 gl_FragColor = texture2D(inputTexture, vTextureCoordinate);
             }
         """
-) {
-
-    private val vPositionHandle: Int by lazy {
-        val index = GLES20.glGetAttribLocation(programHandle, "vPosition")
-        index
+    )
+    private val vPosition by lazy { GLES20.glGetAttribLocation(programHandle, "vPosition") }
+    private val vInputTextureCoordinate by lazy {
+        GLES20.glGetAttribLocation(
+            programHandle,
+            "vInputTextureCoordinate"
+        )
     }
-
-    private val mvpMatrixHandle: Int by lazy {
-        GLES20.glGetUniformLocation(programHandle, "mvpMatrix")
+    private val mvpMatrix by lazy { GLES20.glGetUniformLocation(programHandle, "mvpMatrix") }
+    private val textureMatrix by lazy {
+        GLES20.glGetUniformLocation(
+            programHandle,
+            "textureMatrix"
+        )
     }
+    private val inputTexture by lazy { GLES20.glGetUniformLocation(programHandle, "inputTexture") }
 
-    private val vInputTextureCoordinateHandle : Int by lazy {
-        GLES20.glGetAttribLocation(programHandle, "vInputTextureCoordinate")
-    }
+    private val positionBuffer = OpenGlUtils.BufferUtils.generateFloatBuffer(4 * 2)
+    private val textureCoordinate = OpenGlUtils.BufferUtils.generateFloatBuffer(
+        floatArrayOf(
+            0f, 1.0f,
+            0f, 0f,
+            1f, 1f,
+            1f, 0f
+        )
+    )
+    private val mvpMatrixBuffer = OpenGlUtils.BufferUtils.generateFloatBuffer(16)
 
-    private val inputTextureHandle: Int by lazy {
-        GLES20.glGetUniformLocation(programHandle, "inputTexture")
-    }
+    var basicTexture: BasicTexture? = null
 
-    private val positionBuffer: FloatBuffer by lazy {
-        val byteBuffer = ByteBuffer.allocateDirect(4 * 2 * 4)
-        byteBuffer.order(ByteOrder.nativeOrder())
-        val ret = byteBuffer.asFloatBuffer()
-        ret.put(0.0f).put(0.0f).position(0)
-        ret
-    }
-
-    private val mvpMatrixBuffer: FloatBuffer by lazy {
-        val byteBuffer = ByteBuffer.allocateDirect(4 * 16)
-        byteBuffer.order(ByteOrder.nativeOrder())
-        val ret = byteBuffer.asFloatBuffer()
-        ret.put(0.0f).put(0.0f).position(0)
-        ret
-    }
-
-    private val textureCoordinateBuffer: FloatBuffer by lazy {
-        val byteBuffer = ByteBuffer.allocateDirect(4 * 2 * 4)
-        byteBuffer.order(ByteOrder.nativeOrder())
-        val ret = byteBuffer.asFloatBuffer()
-        ret.put(0.0f).put(1.0f)
-            .put(0.0f).put(0f)
-            .put(1.0f).put(1.0f)
-            .put(1.0f).put(0f)
-            .position(0)
-        ret
-    }
-    private val modeMatrix = FloatArray(16)
-    private val mvpMatrix = FloatArray(16)
-
-    private val bitmapTexture = BitmapTexture(bitmap)
-
-    fun setSquare(left:Float,top:Float,right:Float,bottom:Float) {
+    fun setSquare(left: Float, top: Float, right: Float, bottom: Float) {
         positionBuffer.position(0)
         positionBuffer
             .put(left).put(top)
@@ -88,21 +67,39 @@ class TextureProgram(bitmap: Bitmap) : BaseProgram(
             .put(right).put(top)
             .put(right).put(bottom)
             .position(0)
+        basicTexture?.updateTargetSize((right - left).toInt(), (bottom - top).toInt())
     }
 
-    override fun drawContent(vpMatrix: FloatArray) {
-        Matrix.setIdentityM(modeMatrix, 0)
-        Matrix.multiplyMM(mvpMatrix, 0, vpMatrix, 0, modeMatrix, 0)
-        GLES20.glEnableVertexAttribArray(vPositionHandle)
-        GLES20.glEnableVertexAttribArray(vInputTextureCoordinateHandle)
-        GLES20.glUniformMatrix4fv(mvpMatrixHandle, 1, false, mvpMatrix, 0)
-        GLES20.glBindTexture(GL_TEXTURE_2D, bitmapTexture.textureId)
-        GLES20.glUniform1i(inputTextureHandle,0)
-        GLES20.glVertexAttribPointer(vPositionHandle, 2, GLES20.GL_FLOAT, false, 0, positionBuffer)
-        GLES20.glVertexAttribPointer(vInputTextureCoordinateHandle, 2, GLES20.GL_FLOAT, false, 0, textureCoordinateBuffer)
-        GLES20.glDrawArrays(GLES20.GL_TRIANGLE_STRIP, 0, 4)
-        GLES20.glBindTexture(GL_TEXTURE_2D, 0)
-        GLES20.glDisableVertexAttribArray(vInputTextureCoordinateHandle)
-        GLES20.glDisableVertexAttribArray(vPositionHandle)
+    fun prepareDraw() {
+        GLES20.glUseProgram(programHandle)
+    }
+
+    fun draw(vpMatrix: FloatArray) {
+        basicTexture?.let { texture ->
+            //        Matrix.setIdentityM(modeMatrix, 0)
+//        Matrix.multiplyMM(mvpMatrix, 0, vpMatrix, 0, modeMatrix, 0)
+            GLES20.glEnableVertexAttribArray(vPosition)
+            GLES20.glEnableVertexAttribArray(vInputTextureCoordinate)
+            GLES20.glUniformMatrix4fv(mvpMatrix, 1, false, vpMatrix, 0)
+//        GLES20.glUniformMatrix4fv(textureMatrix,1,false,bitmapTexture.textureMatrix)
+            GLES20.glActiveTexture(GL_TEXTURE0)
+            GLES20.glBindTexture(GL_TEXTURE_2D, texture.textureId)
+            GLES20.glUniform1i(inputTexture, 0)
+            GLES20.glVertexAttribPointer(vPosition, 2, GLES20.GL_FLOAT, false, 0, positionBuffer)
+            GLES20.glVertexAttribPointer(
+                vInputTextureCoordinate,
+                2,
+                GLES20.GL_FLOAT,
+                false,
+                0,
+                texture.textureCoordinate
+            )
+            GLES20.glDrawArrays(GLES20.GL_TRIANGLE_STRIP, 0, 4)
+            GLES20.glBindTexture(GL_TEXTURE_2D, 0)
+            GLES20.glDisableVertexAttribArray(vInputTextureCoordinate)
+            GLES20.glDisableVertexAttribArray(vPosition)
+
+
+        }
     }
 }

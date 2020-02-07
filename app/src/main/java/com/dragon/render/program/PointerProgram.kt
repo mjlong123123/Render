@@ -34,24 +34,11 @@ class PointerProgram : BaseProgram(
         ret
     }
 
-    private val mvpMatrixBuffer: FloatBuffer by lazy {
-        val byteBuffer = ByteBuffer.allocateDirect(4 * 16)
-        byteBuffer.order(ByteOrder.nativeOrder())
-        val ret = byteBuffer.asFloatBuffer()
-        ret.put(0.0f).put(0.0f).position(0)
-        ret
-    }
 
     fun setPosition(x: Float, y: Float) {
         positionBuffer.position(0)
         positionBuffer.put(x).put(y).position(0)
     }
-
-    fun setMVPMatrix(matrix: FloatArray) {
-        mvpMatrixBuffer.position(0)
-        mvpMatrixBuffer.put(matrix).position(0)
-    }
-
     override fun drawContent(vpMatrix: FloatArray) {
         GLES20.glEnableVertexAttribArray(vPositionHandle)
         GLES20.glUniformMatrix4fv(mvpMatrixHandle, 1, false, vpMatrix, 0)

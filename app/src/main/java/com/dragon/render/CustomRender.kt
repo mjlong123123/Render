@@ -9,14 +9,17 @@ import android.view.MotionEvent
 import android.view.SurfaceHolder
 import android.view.View
 import com.dragon.render.program.*
+import com.dragon.render.texture.FrameBufferTexture
 import javax.microedition.khronos.egl.EGLConfig
 import javax.microedition.khronos.opengles.GL10
 
-class CustomRender(val glSurfaceView: GLSurfaceView) : GLSurfaceView.Renderer, View.OnTouchListener{
+class CustomRender(val glSurfaceView: GLSurfaceView) : GLSurfaceView.Renderer,
+    View.OnTouchListener {
     companion object {
         const val TAG = "CustomRender"
     }
-    private val pointerProgram : PointerProgram by lazy {
+
+    private val pointerProgram: PointerProgram by lazy {
         PointerProgram().apply { init() }
     }
 
@@ -24,32 +27,35 @@ class CustomRender(val glSurfaceView: GLSurfaceView) : GLSurfaceView.Renderer, V
         LineProgram().apply { init() }
     }
 
-    private val triangleProgram : TriangleProgram by lazy {
+    private val triangleProgram: TriangleProgram by lazy {
         TriangleProgram().apply { init() }
     }
 
-    private val squareProgram : SquareProgram by lazy {
+    private val squareProgram: SquareProgram by lazy {
         SquareProgram().apply { init() }
     }
 
     private val textureProgram: TextureProgram by lazy {
         val resources = glSurfaceView.resources
         val context = glSurfaceView.context
-        val bitmap = BitmapFactory.decodeStream(context.assets.open("global_lut.png"))
-        TextureProgram(bitmap).apply { init() }
+        val bitmap = BitmapFactory.decodeStream(context.assets.open("test.jpg"))
+        TextureProgram()
     }
 
+    private val frameBuffer by lazy { FrameBufferTexture(1080, 1794 / 2) }
+
     val vpMatrix = FloatArray(16)
+    val vpMatrix2 = FloatArray(16)
     val projectionMatrix = FloatArray(16)
     val viewMatrix = FloatArray(16)
 
     var ratio = 1.0f
 
-    var pointX : Float = 0f
-    var pointY : Float = 0f
+    var pointX: Float = 0f
+    var pointY: Float = 0f
 
     var viewPortWidth: Int = 1
-    var viewPortHeight : Int = 1
+    var viewPortHeight: Int = 1
 
     init {
         glSurfaceView.apply {
@@ -67,11 +73,41 @@ class CustomRender(val glSurfaceView: GLSurfaceView) : GLSurfaceView.Renderer, V
         GLES20.glClear(GLES20.GL_COLOR_BUFFER_BIT or GLES20.GL_DEPTH_BUFFER_BIT)
 //        Matrix.setIdentityM(vpMatrix,0)
 //        pointerProgram.setMVPMatrix(vpMatrix)
-        pointerProgram.setPosition(pointX,viewPortHeight - pointY)
-        pointerProgram.draw(vpMatrix)
+        val viewPort = IntArray(4)
+        GLES20.glGetIntegerv(GLES20.GL_VIEWPORT, viewPort,0)
+        Log.d("ddddd","${viewPort[0]} ${viewPort[1]} ${viewPort[2]} ${viewPort[3]}")
+        GLES20.glBindFramebuffer(GLES20.GL_FRAMEBUFFER, frameBuffer.frameBuffer)
+//        GLES20.glFramebufferTexture2D(
+//            GLES20.GL_FRAMEBUFFER,
+//            GLES20.GL_COLOR_ATTACHMENT0,
+//            GLES20.GL_TEXTURE_2D,
+//            frameBuffer.textureId,
+//            0
+//        )
+            GLES20.glViewport(0,0,frameBuffer.width,frameBuffer.height)
 
-        textureProgram.setSquare(0f,0f,viewPortWidth.toFloat(),viewPortHeight.toFloat())
+        GLES20.glGetIntegerv(GLES20.GL_VIEWPORT, viewPort,0)
+        Log.d("ddddd","${viewPort[0]} ${viewPort[1]} ${viewPort[2]} ${viewPort[3]}")
+            GLES20.glClearColor(1.0f, 0.0f, 1.0f, 1.0f)
+            GLES20.glClear(GLES20.GL_COLOR_BUFFER_BIT or GLES20.GL_DEPTH_BUFFER_BIT)
+            Matrix.setIdentityM(vpMatrix2,0)
+            Matrix.scaleM(vpMatrix2,0,1f,-1f,1f)
+//            pointerProgram.setPosition(viewPortWidth/8.toFloat(),viewPortHeight/2.toFloat())
+        pointerProgram.setPosition(500f,500f)
+            pointerProgram.draw(frameBuffer.openGlMatrix.mvpMatrix)
+        GLES20.glBindFramebuffer(GLES20.GL_FRAMEBUFFER, 0)
+        GLES20.glViewport(0,0,viewPortWidth,viewPortHeight)
+        textureProgram.prepareDraw()
+        textureProgram.basicTexture = frameBuffer
+        textureProgram.setSquare(
+            viewPortWidth.toFloat() /2,
+            viewPortHeight.toFloat() / 2,
+            viewPortWidth.toFloat() ,
+            viewPortHeight.toFloat()
+        )
         textureProgram.draw(vpMatrix)
+        pointerProgram.setPosition(-0.5f,-0.5f)
+        pointerProgram.draw(vpMatrix)
 //        lineProgram.setLine(0f,0f,0.3f,0.5f)
 //        lineProgram.draw()
 //
@@ -87,11 +123,11 @@ class CustomRender(val glSurfaceView: GLSurfaceView) : GLSurfaceView.Renderer, V
 
     override fun onSurfaceChanged(gl: GL10?, width: Int, height: Int) {
         Log.d(TAG, "onSurfaceChanged width $width height $height ")
-        GLES20.glViewport(0,0,width,height)
+        GLES20.glViewport(0, 0, width, height)
         viewPortWidth = width
         viewPortHeight = height
         ratio = width.toFloat() / height.toFloat()
-        Matrix.frustumM(projectionMatrix,0,0f,width.toFloat(),0f,height.toFloat(),3f,15f)
+        Matrix.frustumM(projectionMatrix, 0, 0f, width.toFloat(), 0f, height.toFloat(), 3f, 15f)
         Matrix.setLookAtM(viewMatrix, 0, 0f, 0f, 3f, 0f, 0f, 0f, 0f, 1.0f, 0.0f)
         // Calculate the projection and view transformation
         Matrix.multiplyMM(vpMatrix, 0, projectionMatrix, 0, viewMatrix, 0)
@@ -103,8 +139,8 @@ class CustomRender(val glSurfaceView: GLSurfaceView) : GLSurfaceView.Renderer, V
 
     override fun onTouch(v: View?, event: MotionEvent?): Boolean {
         event?.let {
-            when(it.actionMasked){
-                MotionEvent.ACTION_DOWN ->{
+            when (it.actionMasked) {
+                MotionEvent.ACTION_DOWN -> {
                     pointX = event.x
                     pointY = event.y
                     (v as GLSurfaceView).requestRender()

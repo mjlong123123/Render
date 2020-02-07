@@ -2,31 +2,25 @@ package com.dragon.render
 
 import android.opengl.GLES20
 import android.util.Log
+import java.nio.ByteBuffer
+import java.nio.ByteOrder
+import java.nio.FloatBuffer
 
 class OpenGlUtils {
     companion object {
         private const val TAG = "OpenGlUtils"
-        const val VERTEX_SHADER_CODE = """
-            attribute vec2 vPosition;
-            void main(){
-                gl_Position = vec4(vPosition,1.0,1.0);
-                gl_PointSize = 6.0 * 6.0;
-            }
-        """
-        const val FRAGMENT_SHADER_CODE = """
-            void main(){
-                gl_FragColor = vec4(1.0,0.0,0.0,1.0);
-            }
-        """
-
         fun createProgram(vertexShader: String, fragmentShader: String): Int {
             val vertex = loadShader(GLES20.GL_VERTEX_SHADER, vertexShader)
-            val fragment = loadShader(GLES20.GL_FRAGMENT_SHADER, fragmentShader)
-            if (vertex == 0 || fragment == 0) {
+            if (vertex == 0) {
                 Log.d(TAG, "load error vertex:$vertex")
-                Log.d(TAG, "load error fragmentShader:$fragmentShader")
                 return 0
             }
+            val fragment = loadShader(GLES20.GL_FRAGMENT_SHADER, fragmentShader)
+            if (fragment == 0) {
+                Log.d(TAG, "load error fragmentShader:$fragment")
+                return 0
+            }
+
             var program = GLES20.glCreateProgram()
             GLES20.glAttachShader(program, vertex)
             GLES20.glAttachShader(program, fragment)
@@ -45,13 +39,9 @@ class OpenGlUtils {
             return program
         }
 
-        fun destroyeProgram(program: Int) {
-            GLES20.glDeleteProgram(program)
-        }
-
         private fun loadShader(type: Int, codeString: String): Int {
             val compiled = intArrayOf(1)
-            val shader = GLES20.glCreateShader(type).also {  }
+            val shader = GLES20.glCreateShader(type)
             GLES20.glShaderSource(shader, codeString)
             GLES20.glCompileShader(shader)
             GLES20.glGetShaderiv(shader, GLES20.GL_COMPILE_STATUS, compiled, 0)
@@ -60,6 +50,61 @@ class OpenGlUtils {
                 return 0
             }
             return shader
+        }
+
+        fun destroyeProgram(program: Int) {
+            GLES20.glDeleteProgram(program)
+        }
+    }
+
+    class BufferUtils {
+        companion object {
+            fun generateFloatBuffer(size: Int) =
+                ByteBuffer.allocateDirect(4 * size)
+                    .order(ByteOrder.nativeOrder())
+                    .asFloatBuffer() as FloatBuffer
+
+            fun generateFloatBuffer(arrayBuffer: FloatArray) =
+                ByteBuffer.allocateDirect(4 * arrayBuffer.size)
+                    .order(ByteOrder.nativeOrder())
+                    .asFloatBuffer()
+                    .put(arrayBuffer)
+                    .rewind() as FloatBuffer
+        }
+    }
+
+    class TextureCoordinateUtils {
+        companion object {
+            fun generateTextureCoordinate(
+                textureWidth: Int,
+                textureHeight: Int,
+                targetWidth: Int,
+                targetHeight: Int
+            ): FloatArray {
+                val containerRatio = targetWidth.toFloat() / targetHeight
+                val ratio = textureWidth.toFloat() / textureHeight
+                var t = 1f
+                var b = 0f
+                var l = 0f
+                var r = 1f
+                if (containerRatio > ratio) {
+                    val requestTargetHeight = textureWidth / containerRatio
+                    val offset = (textureHeight - requestTargetHeight) / 2
+                    t = (requestTargetHeight + offset) / textureHeight
+                    b = offset / textureHeight
+                } else {
+                    val requestTargetWidth = textureHeight * containerRatio
+                    val offset = (textureWidth - requestTargetWidth) / 2
+                    l = offset / textureWidth
+                    r = (requestTargetWidth + offset) / textureWidth
+                }
+                return floatArrayOf(
+                    l, t,
+                    l, b,
+                    r, t,
+                    r, b
+                )
+            }
         }
     }
 }
