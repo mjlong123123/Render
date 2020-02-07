@@ -7,9 +7,8 @@ import com.dragon.render.OpenGlMatrix
 
 class FrameBufferTexture(width: Int, height: Int) : BasicTexture(width, height) {
     var frameBuffer: Int = 0
-    val intValues = IntArray(4)
-    val savedRect = Rect()
-    var openGlMatrix = OpenGlMatrix(width,height)
+    private val savedRect = Rect()
+    var openGlMatrix = OpenGlMatrix(width, height)
 
     init {
         val frameBufferArray = intArrayOf(1)
@@ -70,6 +69,7 @@ class FrameBufferTexture(width: Int, height: Int) : BasicTexture(width, height) 
     }
 
     fun bindFrameBuffer(block: FrameBufferTexture.() -> Unit): FrameBufferTexture {
+        val intValues = IntArray(4)
         GLES20.glGetIntegerv(GLES20.GL_VIEWPORT, intValues, 0)
         savedRect.set(intValues[0], intValues[1], intValues[2], intValues[3])
         GLES20.glBindFramebuffer(GLES20.GL_FRAMEBUFFER, frameBuffer)

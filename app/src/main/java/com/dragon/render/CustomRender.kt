@@ -1,15 +1,22 @@
 package com.dragon.render
 
+import android.graphics.Bitmap
 import android.graphics.BitmapFactory
 import android.opengl.GLES20
 import android.opengl.GLSurfaceView
 import android.opengl.Matrix
 import android.util.Log
 import android.view.MotionEvent
-import android.view.SurfaceHolder
 import android.view.View
 import com.dragon.render.program.*
+import com.dragon.render.texture.BitmapTexture
 import com.dragon.render.texture.FrameBufferTexture
+import java.io.BufferedOutputStream
+import java.io.File
+import java.io.FileOutputStream
+import java.io.IOException
+import java.nio.ByteBuffer
+import java.nio.ByteOrder
 import javax.microedition.khronos.egl.EGLConfig
 import javax.microedition.khronos.opengles.GL10
 
@@ -42,7 +49,16 @@ class CustomRender(val glSurfaceView: GLSurfaceView) : GLSurfaceView.Renderer,
         TextureProgram()
     }
 
-    private val frameBuffer by lazy { FrameBufferTexture(1080, 1794 / 2) }
+    private val frameBuffer by lazy { FrameBufferTexture(1080 / 2, 1794 / 2) }
+    private val bitmapTexture by lazy {
+        BitmapTexture(
+            BitmapFactory.decodeStream(
+                glSurfaceView.context.assets.open(
+                    "test.jpg"
+                )
+            )
+        )
+    }
 
     val vpMatrix = FloatArray(16)
     val vpMatrix2 = FloatArray(16)
@@ -71,54 +87,48 @@ class CustomRender(val glSurfaceView: GLSurfaceView) : GLSurfaceView.Renderer,
         //clear screen.
         GLES20.glClearColor(1.0f, 1.0f, 1.0f, 1.0f)
         GLES20.glClear(GLES20.GL_COLOR_BUFFER_BIT or GLES20.GL_DEPTH_BUFFER_BIT)
-//        Matrix.setIdentityM(vpMatrix,0)
-//        pointerProgram.setMVPMatrix(vpMatrix)
-        val viewPort = IntArray(4)
-        GLES20.glGetIntegerv(GLES20.GL_VIEWPORT, viewPort,0)
-        Log.d("ddddd","${viewPort[0]} ${viewPort[1]} ${viewPort[2]} ${viewPort[3]}")
-        GLES20.glBindFramebuffer(GLES20.GL_FRAMEBUFFER, frameBuffer.frameBuffer)
-//        GLES20.glFramebufferTexture2D(
-//            GLES20.GL_FRAMEBUFFER,
-//            GLES20.GL_COLOR_ATTACHMENT0,
-//            GLES20.GL_TEXTURE_2D,
-//            frameBuffer.textureId,
-//            0
-//        )
-            GLES20.glViewport(0,0,frameBuffer.width,frameBuffer.height)
+        frameBuffer.bindFrameBuffer {
+            textureProgram.prepareDraw()
+            textureProgram.basicTexture = bitmapTexture
+            textureProgram.setSquare(
+                0f,
+                0f,
+                width.toFloat(),
+                height / 4.toFloat()
+            )
+            Matrix.setIdentityM(vpMatrix2, 0)
 
-        GLES20.glGetIntegerv(GLES20.GL_VIEWPORT, viewPort,0)
-        Log.d("ddddd","${viewPort[0]} ${viewPort[1]} ${viewPort[2]} ${viewPort[3]}")
-            GLES20.glClearColor(1.0f, 0.0f, 1.0f, 1.0f)
-            GLES20.glClear(GLES20.GL_COLOR_BUFFER_BIT or GLES20.GL_DEPTH_BUFFER_BIT)
-            Matrix.setIdentityM(vpMatrix2,0)
-            Matrix.scaleM(vpMatrix2,0,1f,-1f,1f)
-//            pointerProgram.setPosition(viewPortWidth/8.toFloat(),viewPortHeight/2.toFloat())
-        pointerProgram.setPosition(500f,500f)
-            pointerProgram.draw(frameBuffer.openGlMatrix.mvpMatrix)
-        GLES20.glBindFramebuffer(GLES20.GL_FRAMEBUFFER, 0)
-        GLES20.glViewport(0,0,viewPortWidth,viewPortHeight)
+            textureProgram.draw(openGlMatrix.mvpMatrix)
+
+            pointerProgram.setPosition(1f, 1f)
+            pointerProgram.draw(openGlMatrix.mvpMatrix)
+        }.unbindFrameBuffer()
+
+
+        //draw framebuffer
         textureProgram.prepareDraw()
         textureProgram.basicTexture = frameBuffer
         textureProgram.setSquare(
-            viewPortWidth.toFloat() /2,
-            viewPortHeight.toFloat() / 2,
-            viewPortWidth.toFloat() ,
-            viewPortHeight.toFloat()
+            viewPortWidth.toFloat() / 2,
+            0f,
+            viewPortWidth.toFloat() / 2,
+            viewPortHeight.toFloat() / 2
         )
         textureProgram.draw(vpMatrix)
-        pointerProgram.setPosition(-0.5f,-0.5f)
-        pointerProgram.draw(vpMatrix)
-//        lineProgram.setLine(0f,0f,0.3f,0.5f)
-//        lineProgram.draw()
-//
-//        lineProgram.setLine(-0.5f,-0.5f,-0.3f,-0.8f)
-//        lineProgram.draw()
 
-//        triangleProgram.setTriangle(-1f,0f,1f,0f,0f,1f)
-//        triangleProgram.draw(vpMatrix)
-//
-//        squareProgram.setSquare(-0.5f,0f,0f,-0.5f)
-//        squareProgram.draw()
+
+        //////ok
+        textureProgram.basicTexture = bitmapTexture
+        textureProgram.setSquare(
+            0f,
+            viewPortHeight.toFloat() / 2,
+            viewPortWidth.toFloat() / 2,
+            viewPortHeight.toFloat() / 2
+        )
+        textureProgram.draw(vpMatrix)
+
+        pointerProgram.setPosition(0f, 0f)
+        pointerProgram.draw(vpMatrix)
     }
 
     override fun onSurfaceChanged(gl: GL10?, width: Int, height: Int) {

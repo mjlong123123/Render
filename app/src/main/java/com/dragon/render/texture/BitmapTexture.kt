@@ -3,8 +3,18 @@ package com.dragon.render.texture
 import android.graphics.Bitmap
 import android.opengl.GLES20
 import android.opengl.GLUtils
+import com.dragon.render.OpenGlUtils
 
 class BitmapTexture(bitmap: Bitmap) : BasicTexture(bitmap.width, bitmap.height) {
+    override val textureCoordinate = OpenGlUtils.BufferUtils.generateFloatBuffer(
+        OpenGlUtils.TextureCoordinateUtils.generateBitmapTextureCoordinate(
+            width,
+            height,
+            targetWidth,
+            targetHeight
+        )
+    )
+
     init {
         val textureArray = IntArray(1)
         GLES20.glGenTextures(1, textureArray, 0)
@@ -32,5 +42,18 @@ class BitmapTexture(bitmap: Bitmap) : BasicTexture(bitmap.width, bitmap.height) 
         GLUtils.texImage2D(GLES20.GL_TEXTURE_2D, 0, bitmap, 0)
         GLES20.glBindTexture(GLES20.GL_TEXTURE_2D, 0)
         textureId = textureArray[0]
+    }
+
+    override fun crop(targetWidth: Int, targetHeight: Int) {
+        super.crop(targetWidth, targetHeight)
+        textureCoordinate.rewind()
+        textureCoordinate.put(
+            OpenGlUtils.TextureCoordinateUtils.generateBitmapTextureCoordinate(
+                width,
+                height,
+                targetWidth,
+                targetHeight
+            )
+        ).rewind()
     }
 }

@@ -10,7 +10,7 @@ class PointerProgram : BaseProgram(
             attribute vec2 vPosition;
             uniform mat4 mvpMatrix;
             void main(){
-                gl_Position = mvpMatrix * vec4(vPosition,0.0,1.0);
+                gl_Position =  mvpMatrix * vec4(vPosition,0.0,1.0);
                 gl_PointSize = 12.0 * 12.0;
             }
         """, """

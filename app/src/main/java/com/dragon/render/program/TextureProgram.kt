@@ -1,12 +1,10 @@
 package com.dragon.render.program
 
-import android.graphics.Bitmap
 import android.opengl.GLES20
 import android.opengl.GLES20.GL_TEXTURE0
 import android.opengl.GLES20.GL_TEXTURE_2D
 import com.dragon.render.OpenGlUtils
 import com.dragon.render.texture.BasicTexture
-import com.dragon.render.texture.BitmapTexture
 
 class TextureProgram {
     private val programHandle = OpenGlUtils.createProgram(
@@ -59,15 +57,15 @@ class TextureProgram {
 
     var basicTexture: BasicTexture? = null
 
-    fun setSquare(left: Float, top: Float, right: Float, bottom: Float) {
+    fun setSquare(x: Float, y: Float, w: Float, h: Float) {
         positionBuffer.position(0)
         positionBuffer
-            .put(left).put(top)
-            .put(left).put(bottom)
-            .put(right).put(top)
-            .put(right).put(bottom)
+            .put(x).put(y + h)
+            .put(x).put(y)
+            .put(x + w).put(y + h)
+            .put(x + w).put(y)
             .position(0)
-        basicTexture?.updateTargetSize((right - left).toInt(), (bottom - top).toInt())
+        basicTexture?.crop(w.toInt(), h.toInt())
     }
 
     fun prepareDraw() {

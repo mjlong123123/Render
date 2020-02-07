@@ -20,4 +20,11 @@ class OpenGlMatrix(viewPortWidth:Int, viewPortHeight:Int) {
         Matrix.setIdentityM(values, M_INDEX)
         Matrix.multiplyMM(values, MVP_INDEX, values, VP_INDEX, values, M_INDEX)
     }
+
+    fun scale(scaleX:Float, scaleY:Float):OpenGlMatrix{
+        Matrix.setIdentityM(values, M_INDEX)
+        Matrix.scaleM(values, M_INDEX,scaleX,scaleY,1f)
+        Matrix.multiplyMM(values, MVP_INDEX, values, VP_INDEX, values, M_INDEX)
+        return this
+    }
 }
