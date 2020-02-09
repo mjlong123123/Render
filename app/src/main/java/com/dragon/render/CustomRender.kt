@@ -1,6 +1,5 @@
 package com.dragon.render
 
-import android.graphics.Bitmap
 import android.graphics.BitmapFactory
 import android.opengl.GLES20
 import android.opengl.GLSurfaceView
@@ -8,15 +7,11 @@ import android.opengl.Matrix
 import android.util.Log
 import android.view.MotionEvent
 import android.view.View
-import com.dragon.render.program.*
+import com.dragon.render.extension.assignOpenGlPosition
+import com.dragon.render.program.PrimitiveProgram
+import com.dragon.render.program.TextureProgram
 import com.dragon.render.texture.BitmapTexture
 import com.dragon.render.texture.FrameBufferTexture
-import java.io.BufferedOutputStream
-import java.io.File
-import java.io.FileOutputStream
-import java.io.IOException
-import java.nio.ByteBuffer
-import java.nio.ByteOrder
 import javax.microedition.khronos.egl.EGLConfig
 import javax.microedition.khronos.opengles.GL10
 
@@ -26,28 +21,8 @@ class CustomRender(val glSurfaceView: GLSurfaceView) : GLSurfaceView.Renderer,
         const val TAG = "CustomRender"
     }
 
-    private val pointerProgram: PointerProgram by lazy {
-        PointerProgram().apply { init() }
-    }
-
-    private val lineProgram: LineProgram by lazy {
-        LineProgram().apply { init() }
-    }
-
-    private val triangleProgram: TriangleProgram by lazy {
-        TriangleProgram().apply { init() }
-    }
-
-    private val squareProgram: SquareProgram by lazy {
-        SquareProgram().apply { init() }
-    }
-
-    private val textureProgram: TextureProgram by lazy {
-        val resources = glSurfaceView.resources
-        val context = glSurfaceView.context
-        val bitmap = BitmapFactory.decodeStream(context.assets.open("test.jpg"))
-        TextureProgram()
-    }
+    private val textureProgram: TextureProgram by lazy { TextureProgram() }
+    private val primitiveProgram by lazy { PrimitiveProgram() }
 
     private val frameBuffer by lazy { FrameBufferTexture(1080 / 2, 1794 / 2) }
     private val bitmapTexture by lazy {
@@ -59,13 +34,7 @@ class CustomRender(val glSurfaceView: GLSurfaceView) : GLSurfaceView.Renderer,
             )
         )
     }
-
-    val vpMatrix = FloatArray(16)
-    val vpMatrix2 = FloatArray(16)
-    val projectionMatrix = FloatArray(16)
-    val viewMatrix = FloatArray(16)
-
-    var ratio = 1.0f
+    var openGlMatrix = OpenGlMatrix(1,1)
 
     var pointX: Float = 0f
     var pointY: Float = 0f
@@ -88,47 +57,86 @@ class CustomRender(val glSurfaceView: GLSurfaceView) : GLSurfaceView.Renderer,
         GLES20.glClearColor(1.0f, 1.0f, 1.0f, 1.0f)
         GLES20.glClear(GLES20.GL_COLOR_BUFFER_BIT or GLES20.GL_DEPTH_BUFFER_BIT)
         frameBuffer.bindFrameBuffer {
-            textureProgram.prepareDraw()
-            textureProgram.basicTexture = bitmapTexture
-            textureProgram.setSquare(
-                0f,
-                0f,
-                width.toFloat(),
-                height / 4.toFloat()
+            bitmapTexture.crop(width, height / 4)
+            textureProgram.draw(
+                bitmapTexture.textureId,
+                OpenGlUtils.BufferUtils.generateFloatBuffer(8).assignOpenGlPosition(
+                    0f,
+                    0f,
+                    width.toFloat(),
+                    height / 4.toFloat()
+                ),
+                bitmapTexture.textureCoordinate,
+                openGlMatrix.mvpMatrix
             )
-            Matrix.setIdentityM(vpMatrix2, 0)
-
-            textureProgram.draw(openGlMatrix.mvpMatrix)
-
-            pointerProgram.setPosition(1f, 1f)
-            pointerProgram.draw(openGlMatrix.mvpMatrix)
         }.unbindFrameBuffer()
 
 
         //draw framebuffer
-        textureProgram.prepareDraw()
-        textureProgram.basicTexture = frameBuffer
-        textureProgram.setSquare(
-            viewPortWidth.toFloat() / 2,
-            0f,
-            viewPortWidth.toFloat() / 2,
-            viewPortHeight.toFloat() / 2
+        frameBuffer.crop(viewPortWidth / 2, viewPortHeight / 2)
+        textureProgram.draw(
+            frameBuffer.textureId,
+            OpenGlUtils.BufferUtils.generateFloatBuffer(8).assignOpenGlPosition(
+                viewPortWidth.toFloat() / 2,
+                0f,
+                viewPortWidth.toFloat() / 2,
+                viewPortHeight.toFloat() / 2
+            ),
+            frameBuffer.textureCoordinate,
+            openGlMatrix.mvpMatrix
         )
-        textureProgram.draw(vpMatrix)
 
 
         //////ok
-        textureProgram.basicTexture = bitmapTexture
-        textureProgram.setSquare(
-            0f,
-            viewPortHeight.toFloat() / 2,
-            viewPortWidth.toFloat() / 2,
-            viewPortHeight.toFloat() / 2
+        bitmapTexture.crop(viewPortWidth, viewPortHeight)
+        textureProgram.draw(
+            bitmapTexture.textureId,
+            OpenGlUtils.BufferUtils.generateFloatBuffer(8).assignOpenGlPosition(
+                0f,
+                viewPortHeight.toFloat() / 2,
+                viewPortWidth.toFloat() / 2,
+                viewPortHeight.toFloat() / 2
+            ),
+            bitmapTexture.textureCoordinate,
+            openGlMatrix.mvpMatrix
         )
-        textureProgram.draw(vpMatrix)
 
-        pointerProgram.setPosition(0f, 0f)
-        pointerProgram.draw(vpMatrix)
+        primitiveProgram.draw(
+            OpenGlUtils.BufferUtils.generateFloatBuffer(
+                floatArrayOf(
+                    pointX,
+                    viewPortHeight - pointY
+                )
+            ),
+            openGlMatrix.mvpMatrix, GLES20.GL_POINTS,
+            OpenGlUtils.BufferUtils.generateFloatBuffer(floatArrayOf(0.5f, 0.5f, 0.5f)),
+            6
+        )
+
+        primitiveProgram.draw(
+            OpenGlUtils.BufferUtils.generateFloatBuffer(
+                floatArrayOf(
+                    viewPortWidth.toFloat() / 2,
+                    viewPortHeight.toFloat() / 2,
+                    viewPortWidth.toFloat(),
+                    viewPortHeight.toFloat()
+                )
+            ),
+            openGlMatrix.mvpMatrix, GLES20.GL_LINE_STRIP,
+            OpenGlUtils.BufferUtils.generateFloatBuffer(floatArrayOf(0.5f, 0.5f, 0.5f)),
+            6
+        )
+        primitiveProgram.draw(
+            OpenGlUtils.BufferUtils.generateFloatBuffer(8).assignOpenGlPosition(
+                0f,
+                0f,
+                viewPortWidth.toFloat() / 2,
+                viewPortHeight.toFloat() / 2
+            ),
+            openGlMatrix.mvpMatrix, GLES20.GL_TRIANGLE_STRIP,
+            OpenGlUtils.BufferUtils.generateFloatBuffer(floatArrayOf(0.5f, 0.5f, 0.5f)),
+            6
+        )
     }
 
     override fun onSurfaceChanged(gl: GL10?, width: Int, height: Int) {
@@ -136,11 +144,7 @@ class CustomRender(val glSurfaceView: GLSurfaceView) : GLSurfaceView.Renderer,
         GLES20.glViewport(0, 0, width, height)
         viewPortWidth = width
         viewPortHeight = height
-        ratio = width.toFloat() / height.toFloat()
-        Matrix.frustumM(projectionMatrix, 0, 0f, width.toFloat(), 0f, height.toFloat(), 3f, 15f)
-        Matrix.setLookAtM(viewMatrix, 0, 0f, 0f, 3f, 0f, 0f, 0f, 0f, 1.0f, 0.0f)
-        // Calculate the projection and view transformation
-        Matrix.multiplyMM(vpMatrix, 0, projectionMatrix, 0, viewMatrix, 0)
+        openGlMatrix = OpenGlMatrix(width,height)
     }
 
     override fun onSurfaceCreated(gl: GL10?, config: EGLConfig?) {
