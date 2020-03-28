@@ -8,7 +8,7 @@ import com.dragon.render.OpenGlUtils
 import com.dragon.render.texture.BasicTexture
 import java.nio.FloatBuffer
 
-class OesTextureProgram {
+class OesTextureProgram(override val programKey:ProgramKey = ProgramKey.OES) :BasicProgram{
     private val programHandle = OpenGlUtils.createProgram(
         """
             attribute vec2 vPosition;

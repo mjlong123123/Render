@@ -1,5 +1,6 @@
 package com.dragon.render.texture
 
+import android.opengl.GLES20
 import com.dragon.render.OpenGlUtils
 
 open class BasicTexture(val width: Int, val height: Int) {
@@ -28,5 +29,11 @@ open class BasicTexture(val width: Int, val height: Int) {
             )
         )
         textureCoordinate.rewind()
+    }
+
+    open fun release() {
+        val ids = IntArray(1)
+        ids[0] = textureId
+        GLES20.glDeleteTextures(1, ids, 0)
     }
 }

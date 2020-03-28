@@ -68,6 +68,17 @@ class FrameBufferTexture(width: Int, height: Int) : BasicTexture(width, height) 
         textureId = textureArray[0]
     }
 
+    fun bind(){
+        GLES20.glBindFramebuffer(GLES20.GL_FRAMEBUFFER, frameBuffer)
+        GLES20.glViewport(0, 0, width, height)
+        GLES20.glClearColor(1.0f, 0.0f, 1.0f, 1.0f)
+        GLES20.glClear(GLES20.GL_COLOR_BUFFER_BIT or GLES20.GL_DEPTH_BUFFER_BIT)
+    }
+
+    fun unbind(){
+        GLES20.glBindFramebuffer(GLES20.GL_FRAMEBUFFER, 0)
+    }
+
     fun bindFrameBuffer(block: FrameBufferTexture.() -> Unit): FrameBufferTexture {
         val intValues = IntArray(4)
         GLES20.glGetIntegerv(GLES20.GL_VIEWPORT, intValues, 0)

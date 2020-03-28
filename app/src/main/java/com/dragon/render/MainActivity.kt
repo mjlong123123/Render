@@ -1,90 +1,75 @@
 package com.dragon.render
 
-import android.graphics.SurfaceTexture
+import android.graphics.BitmapFactory
 import android.os.Bundle
-import android.util.Log
-import android.view.*
+import android.view.WindowManager
 import androidx.appcompat.app.AppCompatActivity
+import com.dragon.render.CameraHolder.Companion.CAMERA_FRONT
+import com.dragon.render.node.NodesRender
+import com.dragon.render.node.OesTextureNode
+import com.dragon.render.node.TextureNode
+import com.dragon.render.texture.BitmapTexture
 import kotlinx.android.synthetic.main.activity_main.*
 import kotlinx.coroutines.GlobalScope
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
-import kotlin.coroutines.resume
-import kotlin.coroutines.suspendCoroutine
 
 class MainActivity : AppCompatActivity() {
-    lateinit var customRender : CustomRender
-
-    private val cameraController by lazy {
-        CameraController(glSurfaceView.context)
+    lateinit var customRender: CustomRender
+    private val nodesRender = NodesRender()
+    private val cameraHolder by lazy {
+        CameraHolder(glSurfaceView.context)
     }
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         window.addFlags(WindowManager.LayoutParams.FLAG_FULLSCREEN)
         setContentView(R.layout.activity_main)
         supportActionBar?.hide()
-        customRender = CustomRender(glSurfaceView)
-        GlobalScope.launch {
-            val ret1 = customRender.generateSurface("camera preview")
-            val ret2 = customRender.generateSurface("camera preview2")
-            val ret3 = getSurfaceView()
-            val ret4 = getTextureView()
-            cameraController.setSurface(ret1.surface, ret2.surface,ret3,ret4)
+        customRender = CustomRender(glSurfaceView, nodesRender)
+        nodesRender.runInRender {
+            val bitmapTexture =
+                BitmapTexture(BitmapFactory.decodeStream(glSurfaceView.context.assets.open("test.jpg")))
+            val textureNode = TextureNode(
+                0f,
+                viewPortHeight.toFloat(),
+                viewPortWidth.toFloat() / 2,
+                viewPortHeight.toFloat() *3/ 4,
+                bitmapTexture
+            )
+            nodesRender.nodes.add(textureNode)
         }
+        nodesRender.runInRender {
+            val surfaceTexture = com.dragon.render.texture.SurfaceTexture(2048, 1536) {
+                glSurfaceView.requestRender()
+            }
+            val oesTextureNode = OesTextureNode(
+                viewPortWidth.toFloat()/2,
+                viewPortHeight.toFloat() / 2,
+                viewPortWidth.toFloat(),
+                0f,
+                surfaceTexture!!
+            )
+            nodesRender.nodes.add(oesTextureNode)
+            cameraHolder.selectCamera(CAMERA_FRONT).setSurface(surfaceTexture.surface)
+                .startPreview().invalidate()
+        }
+
+    }
+
+    override fun onResume() {
+        super.onResume()
+        glSurfaceView.onResume()
+    }
+
+    override fun onPause() {
+        super.onPause()
+        glSurfaceView.onPause()
+        cameraHolder.stopPreview().invalidate()
     }
 
     override fun onDestroy() {
         super.onDestroy()
-        cameraController.release()
-    }
-
-    suspend fun getTextureView() = suspendCoroutine<Surface> {
-        textureView.surfaceTextureListener = object : TextureView.SurfaceTextureListener{
-            override fun onSurfaceTextureSizeChanged(
-                surface: SurfaceTexture?,
-                width: Int,
-                height: Int
-            ) {
-            }
-
-            override fun onSurfaceTextureUpdated(surface: SurfaceTexture?) {
-            }
-
-            override fun onSurfaceTextureDestroyed(surface: SurfaceTexture?): Boolean {
-                return true
-            }
-
-            override fun onSurfaceTextureAvailable(
-                surface: SurfaceTexture?,
-                width: Int,
-                height: Int
-            ) {
-                surface?.let {
-                    s -> it.resume(Surface(s))
-                }
-            }
-        }
-    }
-
-    suspend fun getSurfaceView()= suspendCoroutine<Surface> {
-        surfaceView.holder.addCallback(object : SurfaceHolder.Callback{
-            override fun surfaceChanged(
-                holder: SurfaceHolder?,
-                format: Int,
-                width: Int,
-                height: Int
-            ) {
-            }
-
-            override fun surfaceDestroyed(holder: SurfaceHolder?) {
-            }
-
-            override fun surfaceCreated(holder: SurfaceHolder?) {
-                holder?.let {
-                    h ->
-                    it.resume(h.surface)
-                }
-            }
-        })
+        cameraHolder.release()
     }
 
     override fun onRequestPermissionsResult(
@@ -93,6 +78,6 @@ class MainActivity : AppCompatActivity() {
         grantResults: IntArray
     ) {
         super.onRequestPermissionsResult(requestCode, permissions, grantResults)
-        cameraController.onRequestPermissionsResult(requestCode,permissions, grantResults)
+        cameraHolder.onRequestPermissionsResult(requestCode, permissions, grantResults)
     }
 }

@@ -5,7 +5,7 @@ import android.opengl.GLES20
 import android.opengl.GLUtils
 import com.dragon.render.OpenGlUtils
 
-class BitmapTexture(bitmap: Bitmap) : BasicTexture(bitmap.width, bitmap.height) {
+class BitmapTexture(private val bitmap: Bitmap) : BasicTexture(bitmap.width, bitmap.height) {
     override val textureCoordinate = OpenGlUtils.BufferUtils.generateFloatBuffer(
         OpenGlUtils.TextureCoordinateUtils.generateBitmapTextureCoordinate(
             width,
@@ -55,5 +55,10 @@ class BitmapTexture(bitmap: Bitmap) : BasicTexture(bitmap.width, bitmap.height) 
                 targetHeight
             )
         ).rewind()
+    }
+
+    override fun release() {
+        super.release()
+        bitmap.recycle()
     }
 }
