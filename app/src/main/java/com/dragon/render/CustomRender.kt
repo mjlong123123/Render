@@ -39,8 +39,8 @@ class CustomRender(private val glSurfaceView: GLSurfaceView,private val nodesRen
 
     override fun surfaceDestroyed(holder: SurfaceHolder?) {
         Log.d(TAG, "surfaceDestroyed ${holder?.surface}")
-        nodesRender.release()
-        displayProgram?.release()
+//        nodesRender.release()
+//        displayProgram?.release()
     }
 
     override fun onSurfaceCreated(gl: GL10?, config: EGLConfig?) {

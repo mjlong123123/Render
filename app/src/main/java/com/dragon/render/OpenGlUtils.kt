@@ -96,7 +96,7 @@ class OpenGlUtils {
             return textureArray[0]
         }
 
-        fun createtexture(width: Int, height: Int): Int {
+        fun createTexture(width: Int, height: Int): Int {
             val textureArray = intArrayOf(1)
             GLES20.glGenTextures(1, textureArray, 0)
             GLES20.glBindTexture(GLES20.GL_TEXTURE_2D, textureArray[0])
@@ -132,7 +132,14 @@ class OpenGlUtils {
                 GLES20.GL_CLAMP_TO_EDGE.toFloat()
             )
             GLES20.glBindTexture(GLES20.GL_TEXTURE_2D, 0)
-            if (DEBUG) Log.d(TAG, "createtexture textureId ${textureArray[0]}")
+            if (DEBUG) Log.d(TAG, "createTexture textureId ${textureArray[0]}")
+            return textureArray[0]
+        }
+
+        fun createTexture(): Int {
+            val textureArray = intArrayOf(1)
+            GLES20.glGenTextures(1, textureArray, 0)
+            if (DEBUG) Log.d(TAG, "createTexture textureId ${textureArray[0]}")
             return textureArray[0]
         }
 

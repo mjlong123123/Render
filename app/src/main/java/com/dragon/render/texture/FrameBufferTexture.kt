@@ -11,7 +11,7 @@ class FrameBufferTexture(width: Int, height: Int) : BasicTexture(width, height) 
     var openGlMatrix = OpenGlMatrix(width, height)
 
     init {
-        textureId = OpenGlUtils.createtexture(width, height)
+        textureId = OpenGlUtils.createTexture(width, height)
         frameBufferId = OpenGlUtils.createFrameBuffer(textureId)
     }
 
