@@ -4,7 +4,8 @@ import android.opengl.GLES20
 import com.dragon.render.OpenGlUtils
 
 open class BasicTexture(val width: Int, val height: Int) {
-    var textureId: Int = 0
+    var released: Boolean = false
+    var textureId: Int = GLES20.GL_NONE
     var targetWidth = width
     var targetHeight = height
     open val textureCoordinate = OpenGlUtils.BufferUtils.generateFloatBuffer(
@@ -32,8 +33,7 @@ open class BasicTexture(val width: Int, val height: Int) {
     }
 
     open fun release() {
-        val ids = IntArray(1)
-        ids[0] = textureId
-        GLES20.glDeleteTextures(1, ids, 0)
+        OpenGlUtils.releaseTexture(textureId)
+        released = true
     }
 }

@@ -3,13 +3,10 @@ package com.dragon.render.program
 import android.opengl.GLES20
 import android.opengl.GLES20.GL_TEXTURE0
 import android.opengl.GLES20.GL_TEXTURE_2D
-import com.dragon.render.OpenGlUtils
-import com.dragon.render.texture.BasicTexture
 import java.nio.FloatBuffer
 
-class TextureProgram(override val programKey: ProgramKey = ProgramKey.TEXTURE) :BasicProgram{
-    private val programHandle = OpenGlUtils.createProgram(
-        """
+class TextureProgram() : BasicProgram(
+    ProgramKey.TEXTURE, """
             attribute vec2 vPosition;
             attribute vec2 vInputTextureCoordinate;
             uniform mat4 mvpMatrix;
@@ -19,7 +16,7 @@ class TextureProgram(override val programKey: ProgramKey = ProgramKey.TEXTURE) :
                 vTextureCoordinate = vInputTextureCoordinate; 
             }
         """,
-        """
+    """
             precision mediump float;
             uniform sampler2D inputTexture;
             varying vec2 vTextureCoordinate;
@@ -27,7 +24,7 @@ class TextureProgram(override val programKey: ProgramKey = ProgramKey.TEXTURE) :
                 gl_FragColor = texture2D(inputTexture, vTextureCoordinate);
             }
         """
-    )
+) {
     private val vPosition by lazy { GLES20.glGetAttribLocation(programHandle, "vPosition") }
     private val vInputTextureCoordinate by lazy {
         GLES20.glGetAttribLocation(
@@ -37,7 +34,7 @@ class TextureProgram(override val programKey: ProgramKey = ProgramKey.TEXTURE) :
     }
     private val mvpMatrix by lazy { GLES20.glGetUniformLocation(programHandle, "mvpMatrix") }
     private val inputTexture by lazy { GLES20.glGetUniformLocation(programHandle, "inputTexture") }
-    fun draw(
+    override fun draw(
         textureId: Int,
         positions: FloatBuffer,
         textureCoordinate: FloatBuffer,

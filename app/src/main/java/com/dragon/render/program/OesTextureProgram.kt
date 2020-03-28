@@ -4,13 +4,10 @@ import android.opengl.GLES11Ext
 import android.opengl.GLES20
 import android.opengl.GLES20.GL_TEXTURE0
 import android.opengl.GLES20.GL_TEXTURE_2D
-import com.dragon.render.OpenGlUtils
-import com.dragon.render.texture.BasicTexture
 import java.nio.FloatBuffer
 
-class OesTextureProgram(override val programKey:ProgramKey = ProgramKey.OES) :BasicProgram{
-    private val programHandle = OpenGlUtils.createProgram(
-        """
+class OesTextureProgram : BasicProgram(
+    ProgramKey.OES, """
             attribute vec2 vPosition;
             attribute vec2 vInputTextureCoordinate;
             uniform mat4 mvpMatrix;
@@ -20,7 +17,7 @@ class OesTextureProgram(override val programKey:ProgramKey = ProgramKey.OES) :Ba
                 vTextureCoordinate = vInputTextureCoordinate; 
             }
         """,
-        """
+    """
             #extension GL_OES_EGL_image_external : require
             precision mediump float;
             uniform samplerExternalOES inputTexture;
@@ -29,7 +26,7 @@ class OesTextureProgram(override val programKey:ProgramKey = ProgramKey.OES) :Ba
                 gl_FragColor = texture2D(inputTexture, vTextureCoordinate);
             }
         """
-    )
+) {
     private val vPosition by lazy { GLES20.glGetAttribLocation(programHandle, "vPosition") }
     private val vInputTextureCoordinate by lazy {
         GLES20.glGetAttribLocation(
@@ -39,7 +36,7 @@ class OesTextureProgram(override val programKey:ProgramKey = ProgramKey.OES) :Ba
     }
     private val mvpMatrix by lazy { GLES20.glGetUniformLocation(programHandle, "mvpMatrix") }
     private val inputTexture by lazy { GLES20.glGetUniformLocation(programHandle, "inputTexture") }
-    fun draw(
+    override fun draw(
         textureId: Int,
         positions: FloatBuffer,
         textureCoordinate: FloatBuffer,

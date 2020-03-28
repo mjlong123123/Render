@@ -16,7 +16,7 @@ import kotlinx.coroutines.launch
 
 class MainActivity : AppCompatActivity() {
     lateinit var customRender: CustomRender
-    private val nodesRender = NodesRender()
+    private val nodesRender = NodesRender(1000,1000)
     private val cameraHolder by lazy {
         CameraHolder(glSurfaceView.context)
     }

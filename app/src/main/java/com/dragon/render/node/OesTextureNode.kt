@@ -11,8 +11,12 @@ class OesTextureNode(left: Float, top: Float, right: Float, bottom: Float, val s
     override fun render(render: NodesRender) {
         if (program == null) program = prepareProgram(render, ProgramKey.OES) as? OesTextureProgram
         program?.let {
+            if(it.isReleased()) return
             surfaceTexture.update()
             it.draw(surfaceTexture.textureId,positionBuffer,surfaceTexture.textureCoordinate,render.openGlMatrix.mvpMatrix)
         }
+    }
+
+    override fun release() {
     }
 }

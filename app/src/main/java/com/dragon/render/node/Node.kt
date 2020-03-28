@@ -11,9 +11,7 @@ open abstract class Node(
     var right: Float,
     var bottom: Float
 ) {
-
     val positionBuffer = OpenGlUtils.BufferUtils.generateFloatBuffer(8)
-
     init {
         positionBuffer.rewind()
         positionBuffer.put(left).put(top)
@@ -25,8 +23,10 @@ open abstract class Node(
 
     abstract fun render(render: NodesRender)
 
+    abstract fun release()
+
     fun prepareProgram(render: NodesRender, programKey: ProgramKey): BasicProgram {
-        var program = render.getProgram(ProgramKey.OES)
+        var program = render.getProgram(programKey)
         if (program != null) {
             return program
         }
