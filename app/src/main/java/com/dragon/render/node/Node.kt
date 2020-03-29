@@ -6,20 +6,13 @@ import com.dragon.render.program.ProgramFactory
 import com.dragon.render.program.ProgramKey
 
 open abstract class Node(
-    var left: Float,
-    var top: Float,
-    var right: Float,
-    var bottom: Float
+    var x: Float,
+    var y: Float,
+    var w: Float,
+    var h: Float
 ) {
     val positionBuffer = OpenGlUtils.BufferUtils.generateFloatBuffer(8)
-    init {
-        positionBuffer.rewind()
-        positionBuffer.put(left).put(top)
-        positionBuffer.put(left).put(bottom)
-        positionBuffer.put(right).put(top)
-        positionBuffer.put(right).put(bottom)
-        positionBuffer.rewind()
-    }
+    val textureCoordinateBuffer = OpenGlUtils.BufferUtils.generateFloatBuffer(8)
 
     abstract fun render(render: NodesRender)
 

@@ -174,6 +174,21 @@ class OpenGlUtils {
 
     class BufferUtils {
         companion object {
+            
+            var SQUARE_VERTICES = floatArrayOf(
+                -1.0f, -1.0f,
+                1.0f, -1.0f,
+                -1.0f, 1.0f,
+                1.0f, 1.0f
+            )
+
+            var TEXTURE_VERTICES = floatArrayOf(
+                0.0f, 0.0f,
+                1.0f, 0.0f,
+                0.0f, 1.0f,
+                1.0f, 1.0f
+            )
+
             fun generateFloatBuffer(size: Int) =
                 ByteBuffer.allocateDirect(4 * size)
                     .order(ByteOrder.nativeOrder())

@@ -7,6 +7,7 @@ import android.view.WindowManager
 import androidx.appcompat.app.AppCompatActivity
 import androidx.fragment.app.FragmentActivity
 import com.dragon.render.CameraHolder.Companion.CAMERA_FRONT
+import com.dragon.render.CameraHolder.Companion.CAMERA_REAR
 import com.dragon.render.node.NodesRender
 import com.dragon.render.node.OesTextureNode
 import com.dragon.render.node.TextureNode
@@ -33,27 +34,27 @@ class MainActivity : AppCompatActivity() {
                 BitmapTexture(BitmapFactory.decodeStream(glSurfaceView.context.assets.open("test.jpg")))
             val textureNode = TextureNode(
                 0f,
-                viewPortHeight.toFloat(),
-                viewPortWidth.toFloat() / 2,
-                viewPortHeight.toFloat() * 3 / 4,
+                0f,
+                1920/2f,
+                1080/2f,
                 bitmapTexture
             )
             nodesRender.nodes.add(textureNode)
         }
         nodesRender.runInRender {
-            cameraHolder.selectCamera(CAMERA_FRONT)
+            cameraHolder.selectCamera(CAMERA_REAR)
             val windowRotation = (this@MainActivity).windowManager.defaultDisplay.rotation
             val cameraRotation = cameraHolder.sensorOrientation
             val rotation = (cameraRotation - windowRotation).absoluteValue
 
-            val surfaceTexture = CombineSurfaceTexture(2048, 1536, rotation) {
+            val surfaceTexture = CombineSurfaceTexture(640, 640, rotation) {
                 glSurfaceView.requestRender()
             }
             val oesTextureNode = OesTextureNode(
-                viewPortWidth.toFloat() / 2,
-                viewPortHeight.toFloat() / 2,
-                viewPortWidth.toFloat(),
                 0f,
+                0f,
+                400f,
+                400f,
                 surfaceTexture!!
             )
             nodesRender.nodes.add(oesTextureNode)

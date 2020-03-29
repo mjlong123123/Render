@@ -1,20 +1,31 @@
 package com.dragon.render.node
 
+import com.dragon.render.extension.assignOpenGLTextureCoordinate
+import com.dragon.render.extension.assignOpenGlPosition
 import com.dragon.render.program.ProgramKey
 import com.dragon.render.program.TextureProgram
 import com.dragon.render.texture.BitmapTexture
 
 class TextureNode(
-    left: Float,
-    top: Float,
-    right: Float,
-    bottom: Float,
+    x: Float,
+    y: Float,
+    w: Float,
+    h: Float,
     private val bitmapTexture: BitmapTexture
-) : Node(left, top, right, bottom) {
+) : Node(x, y, w, h) {
     var program: TextureProgram? = null
 
     init {
-        bitmapTexture.crop(right.toInt() - left.toInt(), top.toInt() - bottom.toInt())
+        positionBuffer.assignOpenGlPosition(x, y, w, h)
+        textureCoordinateBuffer.assignOpenGLTextureCoordinate(
+            bitmapTexture.width.toFloat(),
+            bitmapTexture.height.toFloat(),
+            w,
+            h,
+            0f,
+            flipX = false,
+            flipY = true
+        )
     }
 
     override fun render(render: NodesRender) {
@@ -24,7 +35,7 @@ class TextureNode(
             it.draw(
                 bitmapTexture.textureId,
                 positionBuffer,
-                bitmapTexture.textureCoordinate,
+                textureCoordinateBuffer,
                 render.openGlMatrix.mvpMatrix
             )
         }
