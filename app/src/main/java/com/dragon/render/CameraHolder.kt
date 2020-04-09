@@ -16,12 +16,9 @@ import android.util.Log
 import android.util.Size
 import android.view.Surface
 import androidx.core.app.ActivityCompat
-import androidx.fragment.app.FragmentActivity
 import kotlinx.coroutines.GlobalScope
-import kotlinx.coroutines.Job
-import kotlinx.coroutines.launch
-import java.lang.Exception
-import java.lang.RuntimeException
+import kotlinx.coroutines.async
+import java.util.concurrent.Semaphore
 import kotlin.coroutines.resume
 import kotlin.coroutines.resumeWithException
 import kotlin.coroutines.suspendCoroutine
@@ -38,12 +35,12 @@ class CameraHolder(private val context: Context) {
     private val cameraManager = context.getSystemService(Context.CAMERA_SERVICE) as CameraManager
     private val handlerThread = HandlerThread("camera holder")
     private val handler: Handler
-    private var invalidateJob: Job? = null
-    private var opened = false
-    private var previewed = false
-    private var previewAgain = false
-    private var openAgain = false
-    private var released = false
+    private var invalidateBlockSemaphore = Semaphore(1, true)
+    private var requestOpen = false
+    private var requestPreview = false
+    private var requestRestartPreview = false
+    private var requestRestartOpen = false
+    private var requestRelease = false
 
     private var cameraId: String = CAMERA_FRONT;
     private var cameraDevice: CameraDevice? = null
@@ -59,12 +56,8 @@ class CameraHolder(private val context: Context) {
         cameraId = cameraManager.cameraIdList.first()
     }
 
-    fun selectCamera(id: String): CameraHolder {
-        cameraManager.cameraIdList.forEach {
-            Log.d(TAG, "selectCamera $it")
-        }
+    fun selectCamera(id: String) = runInCameraThread {
         cameraId = id
-
         sensorOrientation =
             cameraManager.getCameraCharacteristics(cameraId).get(CameraCharacteristics.SENSOR_ORIENTATION)
                 ?: 0
@@ -72,125 +65,111 @@ class CameraHolder(private val context: Context) {
         cameraManager.getCameraCharacteristics(cameraId)
             .get(CameraCharacteristics.SCALER_STREAM_CONFIGURATION_MAP)
             ?.getOutputSizes(SurfaceTexture::class.java)?.let {
-            it.forEach { size ->
-                previewSizes.add(size)
+                it.forEach { size ->
+                    previewSizes.add(size)
+                }
             }
-        }
-        Log.d(TAG,"selectCamera sensorOrientation $sensorOrientation")
-        Log.d(TAG,"selectCamera window rotation ${(context as FragmentActivity).windowManager.defaultDisplay.rotation}")
         previewSizes.forEach {
-            Log.d(TAG,"selectCamera $it")
+            Log.d(TAG, "selectCamera $it")
         }
-        openAgain = true
-        return this
+        requestRestartOpen = true
     }
 
-    fun getPreviewSize(): Array<out Size>? {
-        return cameraManager.getCameraCharacteristics(cameraId)
-            .get(CameraCharacteristics.SCALER_STREAM_CONFIGURATION_MAP)
-            ?.getOutputSizes(SurfaceTexture::class.java)
+    fun getPreviewSize(block: (sizes: Array<out Size>?) -> Unit) = runInCameraThread {
+        block.invoke(
+            cameraManager.getCameraCharacteristics(cameraId)
+                .get(CameraCharacteristics.SCALER_STREAM_CONFIGURATION_MAP)
+                ?.getOutputSizes(SurfaceTexture::class.java)
+        )
     }
 
-    fun selectPreviewSize(): CameraHolder {
-        val characterMap = cameraManager.getCameraCharacteristics(cameraId)
-        val sizes = characterMap.get(CameraCharacteristics.SCALER_STREAM_CONFIGURATION_MAP)
-            ?.getOutputSizes(SurfaceTexture::class.java)
-        sizes?.let {
-            sizes.forEach { size ->
-                Log.d(TAG, "selectPreviewSize size $size")
-            }
-        }
-        return this
-    }
+    fun getRotation() = sensorOrientation
 
-    fun setSurface(vararg vararg: Surface): CameraHolder {
+    fun setSurface(vararg vararg: Surface) = runInCameraThread {
         if (surfaces.size > 0) {
-            previewAgain = true
+            requestRestartPreview = true
         }
         surfaces.clear()
         vararg.forEach {
             surfaces.add(it)
         }
-        return this
     }
 
-    fun open(): CameraHolder {
-        if (checkPermission()) {
-            opened = true
-        }
-        return this
+    fun open() = runInCameraThread {
+        requestOpen = true
     }
 
-    fun startPreview(): CameraHolder {
-        if (checkPermission()) {
-            opened = true
-            previewed = true
-        }
-        return this
+    fun startPreview() = runInCameraThread {
+        requestOpen = true
+        requestPreview = true
     }
 
-    fun stopPreview(): CameraHolder {
-        previewed = false
-        return this
+    fun stopPreview() = runInCameraThread {
+        requestPreview = false
     }
 
-
-    fun release(): CameraHolder {
-        previewed = false
-        opened = false
-        released = true
-        invalidate()
-        return this
+    fun release() = runInCameraThread {
+        requestPreview = false
+        requestOpen = false
+        requestRelease = true
     }
 
-    fun invalidate() {
-        if (invalidateJob != null) {
-            throw RuntimeException("invalidate invalidateJob is running!")
-        }
-        invalidateJob = GlobalScope.launch {
+    fun invalidate() = runInCameraThread {
+        GlobalScope.async {
+            try {
+                Log.d(TAG, "invalidate acquire")
+                invalidateBlockSemaphore.acquire()
+                Log.d(TAG, "invalidate run")
 
-            if (cameraCaptureSession != null && (!previewed || previewAgain)) {
-                cameraCaptureSession?.close()
-                cameraCaptureSession = null
-                Log.d(TAG, "invalidate cameraCaptureSession?.close()")
-            }
-
-            if (cameraDevice != null && (!opened || openAgain)) {
-                cameraCaptureSession?.close()
-                cameraCaptureSession = null
-                cameraDevice?.close()
-                cameraDevice = null
-                Log.d(TAG, "invalidate cameraDevice?.close()")
-            }
-
-            if (cameraDevice == null && opened) {
-                cameraDevice = try {
-                    openCamera(cameraId)
-                } catch (e: Exception) {
-                    null
+                if (cameraCaptureSession != null && (!requestPreview || requestRestartPreview || !requestOpen || requestRestartOpen)) {
+                    cameraCaptureSession?.close()
+                    cameraCaptureSession = null
+                    Log.d(TAG, "invalidate cameraCaptureSession?.close()")
                 }
-                Log.d(TAG, "invalidate openCamera() $cameraDevice")
-            }
 
-            if (cameraDevice != null && cameraCaptureSession == null && previewed) {
-                cameraCaptureSession = try {
-                    startPreview(cameraDevice!!, surfaces)
-                } catch (e: Exception) {
-                    null
+                if (cameraDevice != null && (!requestOpen || requestRestartOpen || requestOpen)) {
+                    cameraDevice?.close()
+                    cameraDevice = null
+                    Log.d(TAG, "invalidate cameraDevice?.close()")
                 }
-                Log.d(TAG, "invalidate startPreview() $cameraCaptureSession")
+
+                if (cameraDevice == null && requestOpen) {
+                    cameraDevice = try {
+                        openCamera(cameraId)
+                    } catch (e: Exception) {
+                        null
+                    }
+                    Log.d(TAG, "invalidate openCamera() $cameraDevice")
+                }
+
+                if (cameraDevice != null && cameraCaptureSession == null && requestPreview) {
+                    cameraCaptureSession = try {
+                        startPreview(cameraDevice!!, surfaces)
+                    } catch (e: Exception) {
+                        null
+                    }
+                    Log.d(TAG, "invalidate startPreview() $cameraCaptureSession")
+                }
+                requestRestartPreview = false
+                requestRestartOpen = false
+            } finally {
+                Log.d(TAG, "invalidate release")
+                invalidateBlockSemaphore.release()
             }
-            previewAgain = false
-            openAgain = false
-            if (released) {
-                handlerThread.quitSafely()
-            }
-            invalidateJob = null
         }
+    }
+
+    private fun runInCameraThread(block: CameraHolder.() -> Unit): CameraHolder {
+        handler.post { block.invoke(this) }
+        return this
     }
 
     @SuppressLint("MissingPermission")
     private suspend fun openCamera(cameraId: String) = suspendCoroutine<CameraDevice> {
+        if (!checkPermission()) {
+            handler.post { it.resumeWithException(RuntimeException("openCamera camera permission error")) }
+            return@suspendCoroutine
+        }
         cameraManager.openCamera(cameraId, object : CameraDevice.StateCallback() {
             override fun onOpened(camera: CameraDevice) {
                 Log.d(TAG, "onOpened $camera")
@@ -208,14 +187,29 @@ class CameraHolder(private val context: Context) {
                 camera.close()
                 it.resumeWithException(RuntimeException("onError"))
             }
+
+            override fun onClosed(camera: CameraDevice) {
+                super.onClosed(camera)
+                if (requestRelease) {
+                    handlerThread.quitSafely()
+                }
+            }
         }, handler)
     }
 
     private suspend fun startPreview(cameraDevice: CameraDevice, surfaces: MutableList<Surface>) =
         suspendCoroutine<CameraCaptureSession> {
             val builder = cameraDevice.createCaptureRequest(CameraDevice.TEMPLATE_PREVIEW)
+            var hasSurface = false
             surfaces.forEach { surface ->
                 builder.addTarget(surface)
+                if(surface.isValid){
+                    hasSurface = true
+                }
+            }
+            if(!hasSurface){
+                handler.post { it.resumeWithException(Exception("surface not valid")) }
+                return@suspendCoroutine
             }
             cameraDevice.createCaptureSession(
                 surfaces,

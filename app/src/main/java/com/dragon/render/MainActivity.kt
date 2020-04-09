@@ -67,7 +67,8 @@ class MainActivity : AppCompatActivity() {
     override fun onResume() {
         super.onResume()
         glSurfaceView.onResume()
-    }
+//        cameraHolder.startPreview().invalidate()
+    } 
 
     override fun onPause() {
         super.onPause()
