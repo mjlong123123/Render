@@ -6,22 +6,15 @@ import android.app.Activity
 import android.content.Context
 import android.content.pm.PackageManager
 import android.graphics.SurfaceTexture
-import android.hardware.camera2.CameraCaptureSession
-import android.hardware.camera2.CameraCharacteristics
-import android.hardware.camera2.CameraDevice
-import android.hardware.camera2.CameraManager
+import android.hardware.camera2.*
 import android.os.Handler
 import android.os.HandlerThread
+import android.os.Looper
 import android.util.Log
 import android.util.Size
 import android.view.Surface
 import androidx.core.app.ActivityCompat
-import kotlinx.coroutines.GlobalScope
-import kotlinx.coroutines.async
-import java.util.concurrent.Semaphore
-import kotlin.coroutines.resume
-import kotlin.coroutines.resumeWithException
-import kotlin.coroutines.suspendCoroutine
+import java.util.concurrent.CountDownLatch
 
 class CameraHolder(private val context: Context) {
     companion object {
@@ -33,9 +26,9 @@ class CameraHolder(private val context: Context) {
     }
 
     private val cameraManager = context.getSystemService(Context.CAMERA_SERVICE) as CameraManager
+
     private val handlerThread = HandlerThread("camera holder")
     private val handler: Handler
-    private var invalidateBlockSemaphore = Semaphore(1, true)
     private var requestOpen = false
     private var requestPreview = false
     private var requestRestartPreview = false
@@ -99,7 +92,7 @@ class CameraHolder(private val context: Context) {
         requestOpen = true
     }
 
-    fun startPreview() = runInCameraThread {
+    fun requestPreview() = runInCameraThread {
         requestOpen = true
         requestPreview = true
     }
@@ -115,47 +108,28 @@ class CameraHolder(private val context: Context) {
     }
 
     fun invalidate() = runInCameraThread {
-        GlobalScope.async {
-            try {
-                Log.d(TAG, "invalidate acquire")
-                invalidateBlockSemaphore.acquire()
-                Log.d(TAG, "invalidate run")
+        if (cameraCaptureSession != null && (!requestPreview || requestRestartPreview || !requestOpen || requestRestartOpen)) {
+            cameraCaptureSession?.close()
+            cameraCaptureSession = null
+            requestRestartPreview = false
+            Log.d(TAG, "invalidate cameraCaptureSession?.close()")
+        }
 
-                if (cameraCaptureSession != null && (!requestPreview || requestRestartPreview || !requestOpen || requestRestartOpen)) {
-                    cameraCaptureSession?.close()
-                    cameraCaptureSession = null
-                    Log.d(TAG, "invalidate cameraCaptureSession?.close()")
-                }
+        if (cameraDevice != null && (!requestOpen || requestRestartOpen)) {
+            cameraDevice?.close()
+            cameraDevice = null
+            requestRestartOpen = false
+            Log.d(TAG, "invalidate cameraDevice?.close()")
+        }
 
-                if (cameraDevice != null && (!requestOpen || requestRestartOpen || requestOpen)) {
-                    cameraDevice?.close()
-                    cameraDevice = null
-                    Log.d(TAG, "invalidate cameraDevice?.close()")
-                }
+        if (cameraDevice == null && requestOpen) {
+            Log.d(TAG, "invalidate openCamera()")
+            openCamera()
+        }
 
-                if (cameraDevice == null && requestOpen) {
-                    cameraDevice = try {
-                        openCamera(cameraId)
-                    } catch (e: Exception) {
-                        null
-                    }
-                    Log.d(TAG, "invalidate openCamera() $cameraDevice")
-                }
-
-                if (cameraDevice != null && cameraCaptureSession == null && requestPreview) {
-                    cameraCaptureSession = try {
-                        startPreview(cameraDevice!!, surfaces)
-                    } catch (e: Exception) {
-                        null
-                    }
-                    Log.d(TAG, "invalidate startPreview() $cameraCaptureSession")
-                }
-                requestRestartPreview = false
-                requestRestartOpen = false
-            } finally {
-                Log.d(TAG, "invalidate release")
-                invalidateBlockSemaphore.release()
-            }
+        if (cameraDevice != null && cameraCaptureSession == null && requestPreview) {
+            Log.d(TAG, "invalidate startPreview()")
+            startPreview()
         }
     }
 
@@ -165,70 +139,108 @@ class CameraHolder(private val context: Context) {
     }
 
     @SuppressLint("MissingPermission")
-    private suspend fun openCamera(cameraId: String) = suspendCoroutine<CameraDevice> {
+    private fun openCamera() {
         if (!checkPermission()) {
-            handler.post { it.resumeWithException(RuntimeException("openCamera camera permission error")) }
-            return@suspendCoroutine
+            Log.d(TAG, "openCamera !checkPermission()")
+            return
         }
-        cameraManager.openCamera(cameraId, object : CameraDevice.StateCallback() {
-            override fun onOpened(camera: CameraDevice) {
-                Log.d(TAG, "onOpened $camera")
-                it.resume(camera)
+        try {
+            Log.d(TAG, "openCamera")
+            if (cameraDevice != null) {
+                Log.d(TAG, "openCamera cameraDevice != null")
+                return
             }
-
-            override fun onDisconnected(camera: CameraDevice) {
-                Log.d(TAG, "onDisconnected $camera")
-                camera.close()
-                it.resumeWithException(RuntimeException("onDisconnected"))
-            }
-
-            override fun onError(camera: CameraDevice, error: Int) {
-                Log.d(TAG, "onError $camera")
-                camera.close()
-                it.resumeWithException(RuntimeException("onError"))
-            }
-
-            override fun onClosed(camera: CameraDevice) {
-                super.onClosed(camera)
-                if (requestRelease) {
-                    handlerThread.quitSafely()
+            val countDownLatch = CountDownLatch(1);
+            cameraManager.openCamera(cameraId, object : CameraDevice.StateCallback() {
+                override fun onOpened(camera: CameraDevice) {
+                    Log.d(TAG, "openCamera onOpened $camera")
+                    cameraDevice = camera
+                    countDownLatch.countDown()
                 }
-            }
-        }, handler)
+
+                override fun onDisconnected(camera: CameraDevice) {
+                    Log.d(TAG, "openCamera onDisconnected $camera")
+                    camera.close()
+                    cameraDevice = null
+                    countDownLatch.countDown()
+                }
+
+                override fun onError(camera: CameraDevice, error: Int) {
+                    Log.d(TAG, "openCamera onError $camera")
+                    camera.close()
+                    cameraDevice = null
+                    countDownLatch.countDown()
+                }
+
+                override fun onClosed(camera: CameraDevice) {
+                    Log.d(TAG, "openCamera onClosed $camera")
+                    cameraDevice = null
+                }
+            }, Handler(Looper.getMainLooper()))
+            Log.d(TAG, "openCamera await")
+            countDownLatch.await()
+            Log.d(TAG, "openCamera go on")
+        } catch (ae: CameraAccessException) {
+            Log.d(TAG, "openCamera CameraAccessException $ae")
+            cameraDevice = null
+        } catch (ie: InterruptedException) {
+            Log.d(TAG, "openCamera CameraAccessException $ie")
+        }
     }
 
-    private suspend fun startPreview(cameraDevice: CameraDevice, surfaces: MutableList<Surface>) =
-        suspendCoroutine<CameraCaptureSession> {
-            val builder = cameraDevice.createCaptureRequest(CameraDevice.TEMPLATE_PREVIEW)
-            var hasSurface = false
-            surfaces.forEach { surface ->
-                builder.addTarget(surface)
-                if(surface.isValid){
-                    hasSurface = true
+    private fun startPreview() {
+        Log.d(TAG, "startPreview cameraDevice $cameraDevice surfaces $surfaces")
+        cameraDevice?.let { camera ->
+            try {
+                val builder = camera.createCaptureRequest(CameraDevice.TEMPLATE_PREVIEW)
+                var hasSurface = false
+                surfaces.forEach { surface ->
+                    builder.addTarget(surface)
+                    if (surface.isValid) {
+                        hasSurface = true
+                    }
                 }
-            }
-            if(!hasSurface){
-                handler.post { it.resumeWithException(Exception("surface not valid")) }
-                return@suspendCoroutine
-            }
-            cameraDevice.createCaptureSession(
-                surfaces,
-                object : CameraCaptureSession.StateCallback() {
-                    override fun onConfigureFailed(session: CameraCaptureSession) {
-                        Log.d(TAG, "onConfigureFailed $session")
-                        session.close()
-                        it.resumeWithException(RuntimeException("onConfigureFailed"))
-                    }
+                if (!hasSurface) {
+                    Log.d(TAG, "startPreview have not surface.")
+                    return
+                }
+                val countDownLatch = CountDownLatch(1)
+                camera.createCaptureSession(
+                    surfaces,
+                    object : CameraCaptureSession.StateCallback() {
+                        override fun onConfigureFailed(session: CameraCaptureSession) {
+                            Log.d(TAG, "startPreview session onConfigureFailed $session")
+                            session.close()
+                            cameraCaptureSession = null
+                            countDownLatch.countDown()
+                        }
 
-                    override fun onConfigured(session: CameraCaptureSession) {
-                        Log.d(TAG, "onConfigured $session")
-                        session.setRepeatingRequest(builder.build(), null, handler)
-                        it.resume(session)
-                    }
-                },
-                handler
-            )
+                        override fun onConfigured(session: CameraCaptureSession) {
+                            Log.d(TAG, "startPreview session onConfigured $session")
+                            cameraCaptureSession = session
+                            try {
+                                session.setRepeatingRequest(builder.build(), null, handler)
+                            } catch (e: CameraAccessException) {
+                                e.printStackTrace()
+                            }
+                            countDownLatch.countDown()
+                        }
+
+                        override fun onClosed(session: CameraCaptureSession) {
+                            Log.d(TAG, "startPreview session onClosed $session")
+                            cameraCaptureSession = null
+                        }
+                    },
+                    Handler(Looper.getMainLooper())
+                )
+                Log.d(TAG, "startPreview await")
+                countDownLatch.await()
+                Log.d(TAG, "startPreview go on")
+            } catch (e: CameraAccessException) {
+                e.printStackTrace()
+            }
         }
+    }
 
     private fun checkPermission(): Boolean {
         if (ActivityCompat.checkSelfPermission(

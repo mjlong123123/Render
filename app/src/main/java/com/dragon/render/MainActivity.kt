@@ -42,7 +42,7 @@ class MainActivity : AppCompatActivity() {
             nodesRender.nodes.add(textureNode)
         }
         nodesRender.runInRender {
-            cameraHolder.selectCamera(CAMERA_REAR)
+//            cameraHolder.selectCamera(CAMERA_REAR)
             val windowRotation = (this@MainActivity).windowManager.defaultDisplay.rotation
             val cameraRotation = cameraHolder.sensorOrientation
             val rotation = (cameraRotation - windowRotation).absoluteValue
@@ -59,7 +59,7 @@ class MainActivity : AppCompatActivity() {
             )
             nodesRender.nodes.add(oesTextureNode)
             cameraHolder.setSurface(surfaceTexture.surface)
-                .startPreview().invalidate()
+                .requestPreview().invalidate()
         }
 
     }
@@ -67,8 +67,8 @@ class MainActivity : AppCompatActivity() {
     override fun onResume() {
         super.onResume()
         glSurfaceView.onResume()
-//        cameraHolder.startPreview().invalidate()
-    } 
+        cameraHolder.requestPreview().invalidate()
+    }
 
     override fun onPause() {
         super.onPause()
@@ -78,7 +78,7 @@ class MainActivity : AppCompatActivity() {
 
     override fun onDestroy() {
         super.onDestroy()
-        cameraHolder.release()
+        cameraHolder.release().invalidate()
     }
 
     override fun onRequestPermissionsResult(
