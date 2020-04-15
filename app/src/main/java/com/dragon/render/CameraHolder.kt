@@ -35,7 +35,7 @@ class CameraHolder(private val context: Context) {
     private var requestRestartOpen = false
     private var requestRelease = false
 
-    private var cameraId: String = CAMERA_FRONT;
+    var cameraId: String = CAMERA_FRONT;
     private var cameraDevice: CameraDevice? = null
     private var cameraCaptureSession: CameraCaptureSession? = null
     private val surfaces = mutableListOf<Surface>()

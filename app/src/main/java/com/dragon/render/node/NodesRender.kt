@@ -18,7 +18,7 @@ class NodesRender(
     private var frameBuffers: DoubleFrameBufferTexture? = null
     private val renderQueue = LinkedBlockingDeque<Runnable>()
     private val programs = SparseArray<BasicProgram>()
-    val nodes = mutableListOf<Node>()
+    private val nodes = mutableListOf<Node>()
     val openGlMatrix = OpenGlMatrix(viewPortWidth, viewPortHeight)
 
     fun render(): FrameBufferTexture? {
@@ -45,6 +45,14 @@ class NodesRender(
 
     fun runInRender(block: NodesRender.() -> Unit) =
         renderQueue.offer(Runnable { block.invoke(this) })
+
+    fun addNode(node:Node){
+        nodes.add(node)
+    }
+
+    fun removeNode(node: Node){
+        nodes.remove(node)
+    }
 
     fun attachProgram(program: BasicProgram) {
         programs.put(program.programKey.ordinal, program)

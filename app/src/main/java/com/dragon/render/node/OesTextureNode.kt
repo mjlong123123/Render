@@ -29,7 +29,8 @@ class OesTextureNode(
             w,
             h,
             combineSurfaceTexture.orientation.toFloat(),
-            flipX = true
+            combineSurfaceTexture.flipX,
+            combineSurfaceTexture.flipY
         )
     }
 

@@ -33,35 +33,41 @@ class MainActivity : AppCompatActivity() {
             val bitmapTexture =
                 BitmapTexture(BitmapFactory.decodeStream(glSurfaceView.context.assets.open("test.jpg")))
             val textureNode = TextureNode(
-                0f,
-                0f,
-                1920/2f,
-                1080/2f,
+                viewPortWidth.toFloat()/2,
+                viewPortHeight.toFloat()/2,
+                viewPortWidth.toFloat(),
+                viewPortHeight.toFloat(),
                 bitmapTexture
             )
-            nodesRender.nodes.add(textureNode)
+            nodesRender.addNode(textureNode)
         }
         nodesRender.runInRender {
-//            cameraHolder.selectCamera(CAMERA_REAR)
             val windowRotation = (this@MainActivity).windowManager.defaultDisplay.rotation
             val cameraRotation = cameraHolder.sensorOrientation
             val rotation = (cameraRotation - windowRotation).absoluteValue
 
-            val surfaceTexture = CombineSurfaceTexture(640, 640, rotation) {
+            val surfaceTexture = CombineSurfaceTexture(640, 640, rotation, cameraHolder.cameraId == CAMERA_REAR) {
                 glSurfaceView.requestRender()
             }
             val oesTextureNode = OesTextureNode(
                 0f,
                 0f,
-                400f,
-                400f,
+                viewPortWidth.toFloat(),
+                800f,
                 surfaceTexture!!
             )
-            nodesRender.nodes.add(oesTextureNode)
+            nodesRender.addNode(oesTextureNode)
             cameraHolder.setSurface(surfaceTexture.surface)
                 .requestPreview().invalidate()
         }
-
+        cameraHolder.selectCamera(CAMERA_FRONT)
+        switchCamera.setOnClickListener {
+            val cameraId = when (cameraHolder.cameraId) {
+                CAMERA_REAR -> CAMERA_FRONT
+                else -> CAMERA_REAR
+            }
+            cameraHolder.selectCamera(cameraId).invalidate()
+        }
     }
 
     override fun onResume() {

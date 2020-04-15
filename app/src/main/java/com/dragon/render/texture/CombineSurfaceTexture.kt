@@ -4,8 +4,15 @@ import android.graphics.SurfaceTexture
 import android.view.Surface
 import com.dragon.render.OpenGlUtils
 
-class CombineSurfaceTexture(width: Int, height: Int, orientation: Int, notify: () -> Unit = {}) :
-    BasicTexture(width, height, orientation) {
+class CombineSurfaceTexture(
+    width: Int,
+    height: Int,
+    orientation: Int,
+    flipX: Boolean = false,
+    flipY: Boolean = false,
+    notify: () -> Unit = {}
+) :
+    BasicTexture(width, height, orientation, flipX, flipY) {
     private val surfaceTexture: SurfaceTexture
     val surface: Surface
 
