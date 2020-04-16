@@ -49,7 +49,7 @@ class CameraHolder(private val context: Context) {
         cameraId = cameraManager.cameraIdList.first()
     }
 
-    fun selectCamera(id: String) = runInCameraThread {
+    fun selectCamera(id: String)  {
         cameraId = id
         sensorOrientation =
             cameraManager.getCameraCharacteristics(cameraId).get(CameraCharacteristics.SENSOR_ORIENTATION)
