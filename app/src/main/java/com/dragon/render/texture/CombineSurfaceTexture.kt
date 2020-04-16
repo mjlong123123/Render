@@ -2,7 +2,7 @@ package com.dragon.render.texture
 
 import android.graphics.SurfaceTexture
 import android.view.Surface
-import com.dragon.render.OpenGlUtils
+import com.dragon.render.utils.OpenGlUtils
 
 class CombineSurfaceTexture(
     width: Int,

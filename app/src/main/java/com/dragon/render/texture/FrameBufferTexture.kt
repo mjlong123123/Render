@@ -2,8 +2,8 @@ package com.dragon.render.texture
 
 import android.graphics.Rect
 import android.opengl.GLES20
-import com.dragon.render.OpenGlMatrix
-import com.dragon.render.OpenGlUtils
+import com.dragon.render.utils.OpenGlMatrix
+import com.dragon.render.utils.OpenGlUtils
 
 class FrameBufferTexture(width: Int, height: Int) : BasicTexture(width, height) {
     private val frameBufferId: Int

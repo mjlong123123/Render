@@ -1,6 +1,6 @@
 package com.dragon.render.node
 
-import com.dragon.render.OpenGlUtils
+import com.dragon.render.utils.OpenGlUtils
 import com.dragon.render.program.BasicProgram
 import com.dragon.render.program.ProgramFactory
 import com.dragon.render.program.ProgramKey

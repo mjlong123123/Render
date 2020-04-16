@@ -1,4 +1,4 @@
-package com.dragon.render
+package com.dragon.render.camera
 
 import android.Manifest
 import android.annotation.SuppressLint
@@ -35,7 +35,8 @@ class CameraHolder(private val context: Context) {
     private var requestRestartOpen = false
     private var requestRelease = false
 
-    var cameraId: String = CAMERA_FRONT;
+    var cameraId: String =
+        CAMERA_FRONT;
     private var cameraDevice: CameraDevice? = null
     private var cameraCaptureSession: CameraCaptureSession? = null
     private val surfaces = mutableListOf<Surface>()

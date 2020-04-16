@@ -1,12 +1,17 @@
 package com.dragon.render.program
 
 import android.opengl.GLES20
-import com.dragon.render.OpenGlUtils
+import com.dragon.render.utils.OpenGlUtils
 import java.nio.FloatBuffer
 
-class PrimitiveProgram {
-    private val programHandle = OpenGlUtils.createProgram(
-        """
+class PrimitiveProgram(
+    var type: Int = GLES20.GL_POINTS,
+    var color: FloatBuffer = OpenGlUtils.BufferUtils.generateFloatBuffer(3).put(
+        floatArrayOf(0.5f, 0.5f, 0.5f)
+    ),
+    var size: Int = 10
+) : BasicProgram(
+    ProgramKey.PRIMITIVE, """
             attribute vec2 vPosition;
             uniform mat4 mvpMatrix;
             uniform float size;
@@ -21,7 +26,8 @@ class PrimitiveProgram {
                 gl_FragColor = vec4(color,1.0);
             }
         """
-    )
+) {
+
     private val vPositionHandle by lazy { GLES20.glGetAttribLocation(programHandle, "vPosition") }
     private val mvpMatrixHandle by lazy { GLES20.glGetUniformLocation(programHandle, "mvpMatrix") }
     private val sizeHandle by lazy { GLES20.glGetUniformLocation(programHandle, "size") }
@@ -44,5 +50,14 @@ class PrimitiveProgram {
         GLES20.glDrawArrays(type, 0, positions.capacity() / 2)
         GLES20.glDisableVertexAttribArray(vPositionHandle)
         GLES20.glUseProgram(0)
+    }
+
+    override fun draw(
+        textureId: Int,
+        position: FloatBuffer,
+        textureCoordinate: FloatBuffer,
+        mvp: FloatArray
+    ) {
+        draw(position, mvp, type, color, size)
     }
 }

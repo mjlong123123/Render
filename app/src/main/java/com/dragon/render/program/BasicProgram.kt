@@ -1,6 +1,6 @@
 package com.dragon.render.program
 
-import com.dragon.render.OpenGlUtils
+import com.dragon.render.utils.OpenGlUtils
 import java.nio.FloatBuffer
 
 abstract class BasicProgram(

@@ -5,8 +5,9 @@ import android.os.Bundle
 import android.view.WindowManager
 import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
-import com.dragon.render.CameraHolder.Companion.CAMERA_FRONT
-import com.dragon.render.CameraHolder.Companion.CAMERA_REAR
+import com.dragon.render.camera.CameraHolder
+import com.dragon.render.camera.CameraHolder.Companion.CAMERA_FRONT
+import com.dragon.render.camera.CameraHolder.Companion.CAMERA_REAR
 import com.dragon.render.node.NodesRender
 import com.dragon.render.node.OesTextureNode
 import com.dragon.render.node.TextureNode

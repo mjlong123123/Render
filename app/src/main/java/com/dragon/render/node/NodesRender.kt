@@ -3,7 +3,7 @@ package com.dragon.render.node
 import android.util.SparseArray
 import androidx.core.util.containsKey
 import androidx.core.util.forEach
-import com.dragon.render.OpenGlMatrix
+import com.dragon.render.utils.OpenGlMatrix
 import com.dragon.render.program.BasicProgram
 import com.dragon.render.program.ProgramKey
 import com.dragon.render.texture.DoubleFrameBufferTexture
@@ -19,7 +19,8 @@ class NodesRender(
     private val renderQueue = LinkedBlockingDeque<Runnable>()
     private val programs = SparseArray<BasicProgram>()
     private val nodes = mutableListOf<Node>()
-    val openGlMatrix = OpenGlMatrix(viewPortWidth, viewPortHeight)
+    val openGlMatrix =
+        OpenGlMatrix(viewPortWidth, viewPortHeight)
 
     fun render(): FrameBufferTexture? {
         //run event

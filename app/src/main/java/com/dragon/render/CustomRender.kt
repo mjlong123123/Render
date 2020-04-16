@@ -12,6 +12,8 @@ import androidx.core.view.GestureDetectorCompat
 import com.dragon.render.matrix.CropRectMatrixHandler
 import com.dragon.render.node.NodesRender
 import com.dragon.render.program.TextureProgram
+import com.dragon.render.utils.OpenGlMatrix
+import com.dragon.render.utils.OpenGlUtils
 import javax.microedition.khronos.egl.EGLConfig
 import javax.microedition.khronos.opengles.GL10
 

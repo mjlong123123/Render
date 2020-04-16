@@ -1,4 +1,4 @@
-package com.dragon.render
+package com.dragon.render.utils
 
 import android.content.Context
 import android.graphics.Bitmap
@@ -18,12 +18,20 @@ class OpenGlUtils {
         private const val TAG = "OpenGlUtils"
         private const val DEBUG = true
         fun createProgram(vertexShader: String, fragmentShader: String): Int {
-            val vertex = loadShader(GLES20.GL_VERTEX_SHADER, vertexShader)
+            val vertex =
+                loadShader(
+                    GLES20.GL_VERTEX_SHADER,
+                    vertexShader
+                )
             if (vertex == 0) {
                 Log.d(TAG, "load error vertex:$vertex")
                 return 0
             }
-            val fragment = loadShader(GLES20.GL_FRAGMENT_SHADER, fragmentShader)
+            val fragment =
+                loadShader(
+                    GLES20.GL_FRAGMENT_SHADER,
+                    fragmentShader
+                )
             if (fragment == 0) {
                 Log.d(TAG, "load error fragmentShader:$fragment")
                 return 0
@@ -44,7 +52,8 @@ class OpenGlUtils {
             }
             GLES20.glDeleteShader(vertex)
             GLES20.glDeleteShader(fragment)
-            if (DEBUG) Log.d(TAG, "createProgram program $program")
+            if (DEBUG) Log.d(
+                TAG, "createProgram program $program")
             return program
         }
 
@@ -62,7 +71,8 @@ class OpenGlUtils {
         }
 
         fun destroyProgram(program: Int) {
-            if (DEBUG) Log.d(TAG, "destroyProgram program $program")
+            if (DEBUG) Log.d(
+                TAG, "destroyProgram program $program")
             GLES20.glDeleteProgram(program)
         }
 
@@ -92,7 +102,8 @@ class OpenGlUtils {
             )
             GLUtils.texImage2D(GLES20.GL_TEXTURE_2D, 0, bitmap, 0)
             GLES20.glBindTexture(GLES20.GL_TEXTURE_2D, 0)
-            if (DEBUG) Log.d(TAG, "createBitmapTexture textureId ${textureArray[0]}")
+            if (DEBUG) Log.d(
+                TAG, "createBitmapTexture textureId ${textureArray[0]}")
             return textureArray[0]
         }
 
@@ -132,19 +143,22 @@ class OpenGlUtils {
                 GLES20.GL_CLAMP_TO_EDGE.toFloat()
             )
             GLES20.glBindTexture(GLES20.GL_TEXTURE_2D, 0)
-            if (DEBUG) Log.d(TAG, "createTexture textureId ${textureArray[0]}")
+            if (DEBUG) Log.d(
+                TAG, "createTexture textureId ${textureArray[0]}")
             return textureArray[0]
         }
 
         fun createTexture(): Int {
             val textureArray = intArrayOf(1)
             GLES20.glGenTextures(1, textureArray, 0)
-            if (DEBUG) Log.d(TAG, "createTexture textureId ${textureArray[0]}")
+            if (DEBUG) Log.d(
+                TAG, "createTexture textureId ${textureArray[0]}")
             return textureArray[0]
         }
 
         fun releaseTexture(textureId: Int) {
-            if (DEBUG) Log.d(TAG, "releaseTexture textureId $textureId")
+            if (DEBUG) Log.d(
+                TAG, "releaseTexture textureId $textureId")
             GLES20.glDeleteTextures(1, IntArray(1) { textureId }, 0)
         }
 
@@ -162,12 +176,14 @@ class OpenGlUtils {
             )
             GLES20.glBindFramebuffer(GLES20.GL_FRAMEBUFFER, 0)
             GLES20.glBindTexture(GLES20.GL_TEXTURE_2D, 0)
-            if (DEBUG) Log.d(TAG, "createFrameBuffer frameBufferArray ${frameBufferArray[0]}")
+            if (DEBUG) Log.d(
+                TAG, "createFrameBuffer frameBufferArray ${frameBufferArray[0]}")
             return frameBufferArray[0]
         }
 
         fun releaseFrameBuffer(frameBufferId: Int) {
-            if (DEBUG) Log.d(TAG, "releaseFrameBuffer frameBufferId $frameBufferId")
+            if (DEBUG) Log.d(
+                TAG, "releaseFrameBuffer frameBufferId $frameBufferId")
             GLES20.glDeleteFramebuffers(1, IntArray(1) { frameBufferId }, 0)
         }
     }
@@ -210,13 +226,14 @@ class OpenGlUtils {
                 textureHeight: Int,
                 targetWidth: Int,
                 targetHeight: Int
-            ): FloatArray = generateTextureCoordinate(
-                textureWidth,
-                textureHeight,
-                targetWidth,
-                targetHeight,
-                true
-            )
+            ): FloatArray =
+                generateTextureCoordinate(
+                    textureWidth,
+                    textureHeight,
+                    targetWidth,
+                    targetHeight,
+                    true
+                )
 
             fun generateTextureCoordinate(
                 textureWidth: Int,
