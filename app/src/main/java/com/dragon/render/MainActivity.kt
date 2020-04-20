@@ -1,6 +1,5 @@
 package com.dragon.render
 
-import android.graphics.BitmapFactory
 import android.os.Bundle
 import android.view.WindowManager
 import androidx.appcompat.app.AlertDialog
@@ -10,8 +9,6 @@ import com.dragon.render.camera.CameraHolder.Companion.CAMERA_FRONT
 import com.dragon.render.camera.CameraHolder.Companion.CAMERA_REAR
 import com.dragon.render.node.NodesRender
 import com.dragon.render.node.OesTextureNode
-import com.dragon.render.node.TextureNode
-import com.dragon.render.texture.BitmapTexture
 import com.dragon.render.texture.CombineSurfaceTexture
 import kotlinx.android.synthetic.main.activity_main.*
 import kotlin.math.absoluteValue
@@ -31,33 +28,20 @@ class MainActivity : AppCompatActivity() {
         supportActionBar?.hide()
         customRender = CustomRender(glSurfaceView, nodesRender)
         nodesRender.runInRender {
-            val bitmapTexture =
-                BitmapTexture(BitmapFactory.decodeStream(glSurfaceView.context.assets.open("test.jpg")))
-            val textureNode = TextureNode(
-                viewPortWidth.toFloat() / 2,
-                viewPortHeight.toFloat() / 2,
-                viewPortWidth.toFloat(),
-                viewPortHeight.toFloat(),
-                bitmapTexture
-            )
-            nodesRender.addNode(textureNode)
-        }
-        nodesRender.runInRender {
             updatePreviewNode(
                 cameraHolder.previewSizes.first().width,
                 cameraHolder.previewSizes.first().height
             )
-            cameraHolder.setSurface(cameraPreviewNode!!.combineSurfaceTexture.surface)
-                .requestPreview().invalidate()
+            cameraHolder.setSurface(cameraPreviewNode!!.combineSurfaceTexture.surface).invalidate()
         }
-        cameraHolder.selectCamera(CAMERA_FRONT)
+
         switchCamera.setOnClickListener {
             nodesRender.runInRender {
                 val cameraId = when (cameraHolder.cameraId) {
                     CAMERA_REAR -> CAMERA_FRONT
                     else -> CAMERA_REAR
                 }
-                cameraHolder.selectCamera(cameraId)
+                cameraHolder.cameraId = cameraId
                 updatePreviewNode(
                     cameraHolder.previewSizes.first().width,
                     cameraHolder.previewSizes.first().height
@@ -68,7 +52,7 @@ class MainActivity : AppCompatActivity() {
         }
         previewSize.setOnClickListener {
             cameraHolder?.let {
-                it.getPreviewSize { sizes ->
+                it.previewSizes?.let { sizes ->
                     val builder = AlertDialog.Builder(this@MainActivity)
                     val sizesString: Array<String> = Array(sizes?.size ?: 0) { "" }
                     sizes?.forEachIndexed { index, item ->
@@ -89,12 +73,14 @@ class MainActivity : AppCompatActivity() {
                 }
             }
         }
+        cameraHolder.cameraId = CAMERA_FRONT
+        cameraHolder.open().invalidate()
     }
 
     override fun onResume() {
         super.onResume()
         glSurfaceView.onResume()
-        cameraHolder.requestPreview().invalidate()
+        cameraHolder.startPreview().invalidate()
     }
 
     override fun onPause() {
@@ -139,7 +125,7 @@ class MainActivity : AppCompatActivity() {
             0f,
             0f,
             nodesRender.viewPortWidth.toFloat(),
-            800f,
+            nodesRender.viewPortHeight.toFloat(),
             surfaceTexture!!
         )
     }

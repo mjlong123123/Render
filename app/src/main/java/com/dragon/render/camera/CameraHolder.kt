@@ -26,23 +26,36 @@ class CameraHolder(private val context: Context) {
     }
 
     private val cameraManager = context.getSystemService(Context.CAMERA_SERVICE) as CameraManager
-
     private val handlerThread = HandlerThread("camera holder")
-    private val handler: Handler
+    private var handler: Handler?
     private var requestOpen = false
     private var requestPreview = false
     private var requestRestartPreview = false
     private var requestRestartOpen = false
     private var requestRelease = false
 
-    var cameraId: String =
-        CAMERA_FRONT;
+    var sensorOrientation = 0
+    val previewSizes = mutableListOf<Size>()
+    val surfaces = mutableListOf<Surface>()
+    var cameraId: String = CAMERA_FRONT
+        set(value) {
+            field = value
+            val characteristics = cameraManager.getCameraCharacteristics(cameraId)
+            val streamConfig = characteristics.get(CameraCharacteristics.SCALER_STREAM_CONFIGURATION_MAP)
+            val sizes = streamConfig?.getOutputSizes(SurfaceTexture::class.java)
+            sensorOrientation = characteristics.get(CameraCharacteristics.SENSOR_ORIENTATION) ?: 0
+            previewSizes.clear()
+            sizes?.forEach {
+                previewSizes.add(it)
+            }
+            runInCameraThread {
+                if (cameraDevice != null) {
+                    requestRestartOpen = true
+                }
+            }
+        }
     private var cameraDevice: CameraDevice? = null
     private var cameraCaptureSession: CameraCaptureSession? = null
-    private val surfaces = mutableListOf<Surface>()
-
-    var sensorOrientation = 0
-    var previewSizes = mutableListOf<Size>()
 
     init {
         handlerThread.start()
@@ -50,37 +63,8 @@ class CameraHolder(private val context: Context) {
         cameraId = cameraManager.cameraIdList.first()
     }
 
-    fun selectCamera(id: String)  {
-        cameraId = id
-        sensorOrientation =
-            cameraManager.getCameraCharacteristics(cameraId).get(CameraCharacteristics.SENSOR_ORIENTATION)
-                ?: 0
-        previewSizes.clear()
-        cameraManager.getCameraCharacteristics(cameraId)
-            .get(CameraCharacteristics.SCALER_STREAM_CONFIGURATION_MAP)
-            ?.getOutputSizes(SurfaceTexture::class.java)?.let {
-                it.forEach { size ->
-                    previewSizes.add(size)
-                }
-            }
-        previewSizes.forEach {
-            Log.d(TAG, "selectCamera $it")
-        }
-        requestRestartOpen = true
-    }
-
-    fun getPreviewSize(block: (sizes: Array<out Size>?) -> Unit) = runInCameraThread {
-        block.invoke(
-            cameraManager.getCameraCharacteristics(cameraId)
-                .get(CameraCharacteristics.SCALER_STREAM_CONFIGURATION_MAP)
-                ?.getOutputSizes(SurfaceTexture::class.java)
-        )
-    }
-
-    fun getRotation() = sensorOrientation
-
     fun setSurface(vararg vararg: Surface) = runInCameraThread {
-        if (surfaces.size > 0) {
+        if (cameraCaptureSession != null) {
             requestRestartPreview = true
         }
         surfaces.clear()
@@ -93,7 +77,7 @@ class CameraHolder(private val context: Context) {
         requestOpen = true
     }
 
-    fun requestPreview() = runInCameraThread {
+    fun startPreview() = runInCameraThread {
         requestOpen = true
         requestPreview = true
     }
@@ -102,9 +86,13 @@ class CameraHolder(private val context: Context) {
         requestPreview = false
     }
 
-    fun release() = runInCameraThread {
+    fun close() = runInCameraThread {
         requestPreview = false
         requestOpen = false
+    }
+
+    fun release() = runInCameraThread {
+        close()
         requestRelease = true
     }
 
@@ -125,22 +113,28 @@ class CameraHolder(private val context: Context) {
 
         if (cameraDevice == null && requestOpen) {
             Log.d(TAG, "invalidate openCamera()")
-            openCamera()
+            openCameraInternal()
         }
 
         if (cameraDevice != null && cameraCaptureSession == null && requestPreview) {
             Log.d(TAG, "invalidate startPreview()")
-            startPreview()
+            startPreviewInternal()
+        }
+
+        if (requestRelease) {
+            Log.d(TAG, "invalidate release()")
+            handler = null
+            handlerThread.quitSafely()
         }
     }
 
     private fun runInCameraThread(block: CameraHolder.() -> Unit): CameraHolder {
-        handler.post { block.invoke(this) }
+        handler?.post { block.invoke(this) }
         return this
     }
 
     @SuppressLint("MissingPermission")
-    private fun openCamera() {
+    private fun openCameraInternal() {
         if (!checkPermission()) {
             Log.d(TAG, "openCamera !checkPermission()")
             return
@@ -189,7 +183,7 @@ class CameraHolder(private val context: Context) {
         }
     }
 
-    private fun startPreview() {
+    private fun startPreviewInternal() {
         Log.d(TAG, "startPreview cameraDevice $cameraDevice surfaces $surfaces")
         cameraDevice?.let { camera ->
             try {
