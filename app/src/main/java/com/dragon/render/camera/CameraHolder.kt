@@ -63,13 +63,15 @@ class CameraHolder(private val context: Context) {
         cameraId = cameraManager.cameraIdList.first()
     }
 
-    fun setSurface(vararg vararg: Surface) = runInCameraThread {
+    fun setSurface(vararg vararg: Surface?) = runInCameraThread {
         if (cameraCaptureSession != null) {
             requestRestartPreview = true
         }
         surfaces.clear()
         vararg.forEach {
-            surfaces.add(it)
+            if (it != null) {
+                surfaces.add(it)
+            }
         }
     }
 
