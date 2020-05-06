@@ -13,4 +13,6 @@ class BitmapTexture(private val bitmap: Bitmap) : BasicTexture(bitmap.width, bit
         OpenGlUtils.releaseTexture(textureId)
         bitmap.recycle()
     }
+
+    fun hasAlpha() = bitmap.hasAlpha()
 }

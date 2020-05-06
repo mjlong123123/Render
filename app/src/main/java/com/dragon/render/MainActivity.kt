@@ -1,5 +1,6 @@
 package com.dragon.render
 
+import android.graphics.BitmapFactory
 import android.os.Bundle
 import android.view.WindowManager
 import androidx.appcompat.app.AlertDialog
@@ -9,9 +10,12 @@ import com.dragon.render.camera.CameraHolder.Companion.CAMERA_FRONT
 import com.dragon.render.camera.CameraHolder.Companion.CAMERA_REAR
 import com.dragon.render.node.NodesRender
 import com.dragon.render.node.OesTextureNode
+import com.dragon.render.node.TextureNode
+import com.dragon.render.texture.BitmapTexture
 import com.dragon.render.texture.CombineSurfaceTexture
 import kotlinx.android.synthetic.main.activity_main.*
 import kotlin.math.absoluteValue
+
 
 class MainActivity : AppCompatActivity() {
     lateinit var customRender: CustomRender
@@ -21,6 +25,7 @@ class MainActivity : AppCompatActivity() {
         CameraHolder(glSurfaceView.context)
     }
 
+    private var qrCodeDecoder: QRCodeDecoder? = null
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         window.addFlags(WindowManager.LayoutParams.FLAG_FULLSCREEN)
@@ -28,11 +33,22 @@ class MainActivity : AppCompatActivity() {
         supportActionBar?.hide()
         customRender = CustomRender(glSurfaceView, nodesRender)
         nodesRender.runInRender {
+            var size = cameraHolder.previewSizes.first { size -> size.width <= 1920 && size.height <= 1920 }
             updatePreviewNode(
-                cameraHolder.previewSizes.first().width,
-                cameraHolder.previewSizes.first().height
+                size.width,
+                size.height
             )
-            cameraHolder.setSurface(cameraPreviewNode!!.combineSurfaceTexture.surface).invalidate()
+            size = cameraHolder.previewSizes.first { size -> size.width <= 640 && size.height <= 640 }
+            qrCodeDecoder?.release()
+            qrCodeDecoder = QRCodeDecoder(size.width, size.height) { ret ->
+                showQRCodeResult(ret)
+            }
+            cameraHolder.setSurface(
+                cameraPreviewNode!!.combineSurfaceTexture.surface,
+                qrCodeDecoder?.getSurface()
+            ).invalidate()
+
+            nodesRender.addNode(generateWaterMarkNode(viewPortWidth, viewPortHeight))
         }
 
         switchCamera.setOnClickListener {
@@ -42,11 +58,12 @@ class MainActivity : AppCompatActivity() {
                     else -> CAMERA_REAR
                 }
                 cameraHolder.cameraId = cameraId
+                var size = cameraHolder.previewSizes.first { size -> size.width <= 1280 && size.height <= 1280 }
                 updatePreviewNode(
-                    cameraHolder.previewSizes.first().width,
-                    cameraHolder.previewSizes.first().height
+                    size.width,
+                    size.height
                 )
-                cameraHolder.setSurface(cameraPreviewNode!!.combineSurfaceTexture.surface)
+                cameraHolder.setSurface(cameraPreviewNode!!.combineSurfaceTexture.surface, qrCodeDecoder?.getSurface())
                     .invalidate()
             }
         }
@@ -65,7 +82,7 @@ class MainActivity : AppCompatActivity() {
 
                         nodesRender.runInRender {
                             updatePreviewNode(width, height)
-                            cameraHolder.setSurface(cameraPreviewNode!!.combineSurfaceTexture.surface)
+                            cameraHolder.setSurface(cameraPreviewNode!!.combineSurfaceTexture.surface, qrCodeDecoder?.getSurface())
                                 .invalidate()
                         }
                     }
@@ -73,7 +90,7 @@ class MainActivity : AppCompatActivity() {
                 }
             }
         }
-        cameraHolder.cameraId = CAMERA_FRONT
+        cameraHolder.cameraId = CAMERA_REAR
         cameraHolder.open().invalidate()
     }
 
@@ -92,6 +109,7 @@ class MainActivity : AppCompatActivity() {
     override fun onDestroy() {
         super.onDestroy()
         cameraHolder.release().invalidate()
+        qrCodeDecoder?.release()
     }
 
     override fun onRequestPermissionsResult(
@@ -109,7 +127,7 @@ class MainActivity : AppCompatActivity() {
             it.release()
         }
         cameraPreviewNode = generatePreviewNode(w, h)
-        nodesRender.addNode(cameraPreviewNode!!)
+        nodesRender.addNode(0, cameraPreviewNode!!)
     }
 
     private fun generatePreviewNode(w: Int, h: Int): OesTextureNode {
@@ -128,5 +146,25 @@ class MainActivity : AppCompatActivity() {
             nodesRender.viewPortHeight.toFloat(),
             surfaceTexture!!
         )
+    }
+
+    private fun generateWaterMarkNode(viewPortWidth: Int, viewPortHeight: Int): TextureNode {
+        val bitmapTexture = BitmapTexture(BitmapFactory.decodeResource(resources, R.drawable.watermark))
+        return TextureNode(
+            viewPortWidth.toFloat() - bitmapTexture.width,
+            viewPortHeight.toFloat() - bitmapTexture.height,
+            bitmapTexture.width.toFloat(),
+            bitmapTexture.height.toFloat(),
+            bitmapTexture
+        )
+    }
+
+    private fun showQRCodeResult(ret: String) {
+        val builder = AlertDialog.Builder(this)
+        builder.setPositiveButton("OK") { _, _ ->
+            qrCodeDecoder?.reset()
+        }
+        builder.setMessage(ret)
+        builder.show()
     }
 }

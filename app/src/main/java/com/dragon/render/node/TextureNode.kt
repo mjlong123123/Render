@@ -1,5 +1,6 @@
 package com.dragon.render.node
 
+import android.opengl.GLES20
 import com.dragon.render.extension.assignOpenGLTextureCoordinate
 import com.dragon.render.extension.assignOpenGlPosition
 import com.dragon.render.program.ProgramKey
@@ -32,12 +33,19 @@ class TextureNode(
         if (program == null) program = prepareProgram(render, ProgramKey.TEXTURE) as? TextureProgram
         program?.let {
             if (it.isReleased()) return
+            if (bitmapTexture.hasAlpha()) {
+                GLES20.glEnable(GLES20.GL_BLEND)
+                GLES20.glBlendFunc(GLES20.GL_SRC_ALPHA, GLES20.GL_ONE_MINUS_SRC_ALPHA)
+            }
             it.draw(
                 bitmapTexture.textureId,
                 positionBuffer,
                 textureCoordinateBuffer,
                 render.openGlMatrix.mvpMatrix
             )
+            if (bitmapTexture.hasAlpha()) {
+                GLES20.glDisable(GLES20.GL_BLEND)
+            }
         }
     }
 

@@ -3,11 +3,11 @@ package com.dragon.render.node
 import android.util.SparseArray
 import androidx.core.util.containsKey
 import androidx.core.util.forEach
-import com.dragon.render.utils.OpenGlMatrix
 import com.dragon.render.program.BasicProgram
 import com.dragon.render.program.ProgramKey
 import com.dragon.render.texture.DoubleFrameBufferTexture
 import com.dragon.render.texture.FrameBufferTexture
+import com.dragon.render.utils.OpenGlMatrix
 import java.util.concurrent.LinkedBlockingDeque
 
 class NodesRender(
@@ -47,11 +47,15 @@ class NodesRender(
     fun runInRender(block: NodesRender.() -> Unit) =
         renderQueue.offer(Runnable { block.invoke(this) })
 
-    fun addNode(node:Node){
+    fun addNode(node: Node) {
         nodes.add(node)
     }
 
-    fun removeNode(node: Node){
+    fun addNode(index: Int, node: Node) {
+        nodes.add(index, node)
+    }
+
+    fun removeNode(node: Node) {
         nodes.remove(node)
     }
 
