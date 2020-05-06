@@ -47,7 +47,6 @@ class MainActivity : AppCompatActivity() {
                 cameraPreviewNode!!.combineSurfaceTexture.surface,
                 qrCodeDecoder?.getSurface()
             ).invalidate()
-
             nodesRender.addNode(generateWaterMarkNode(viewPortWidth, viewPortHeight))
         }
 
