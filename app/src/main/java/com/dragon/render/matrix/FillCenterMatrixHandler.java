@@ -1,9 +1,3 @@
-/*
- * FillCenterMatrixHandler.java $version 2017. 02. 23.
- *
- * Copyright 2017 LINE Corporation. All rights Reserved.
- * LINE Corporation PROPRIETARY/CONFIDENTIAL. Use is subject to license terms.
- */
 package com.dragon.render.matrix;
 
 import android.graphics.Matrix;
